@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-26T22:12:21.228Z",
+ "generated_at": "2026-11-26T22:33:28.329Z",
  "archive": {
   "dir": "data/archive",
   "days": 7,
@@ -32,6 +32,11 @@
    }
   ],
   "tide": [
+   {
+    "t": "2026-11-26 00:00",
+    "v": 9.832,
+    "surge": null
+   },
    {
     "t": "2026-11-26 16:54",
     "v": 1.505,
@@ -95,22 +100,22 @@
    "name": "Boston Approach (16 NM E)",
    "lat": 42.35,
    "lon": -70.651,
-   "observed_at": "2026-11-26T21:20:00.000Z",
+   "observed_at": "2026-11-26T21:50:00.000Z",
    "wind": {
     "sustained_kt": 25.3,
-    "gust_kt": 31.1,
-    "dir_deg": 60,
-    "at": "2026-11-26T21:20:00.000Z"
+    "gust_kt": 33,
+    "dir_deg": 70,
+    "at": "2026-11-26T21:50:00.000Z"
    },
    "waves": {
     "height_ft": 7.9,
     "dominant_period_s": 7,
-    "dir_deg": 107,
-    "at": "2026-11-26T21:20:00.000Z"
+    "dir_deg": 106,
+    "at": "2026-11-26T21:50:00.000Z"
    },
-   "pressure_hpa": 1026.7,
+   "pressure_hpa": 1026.1,
    "pressure_tendency_hpa": -4.4,
-   "air_temp_f": 47.3,
+   "air_temp_f": 47.5,
    "water_temp_f": 52.5
   },
   "44029": {
@@ -126,10 +131,10 @@
     "at": "2026-11-26T21:00:00.000Z"
    },
    "waves": {
-    "height_ft": 7.5,
-    "dominant_period_s": 6,
+    "height_ft": 8.2,
+    "dominant_period_s": 7,
     "dir_deg": null,
-    "at": "2026-11-26T20:00:00.000Z"
+    "at": "2026-11-26T21:00:00.000Z"
    },
    "pressure_hpa": null,
    "pressure_tendency_hpa": null,
@@ -195,23 +200,11 @@
  ],
  "tide": {
   "station": "8443970",
-  "observed_ft": 1.095,
-  "observed_at": "2026-11-26 17:06",
-  "predicted_ft": -0.026,
-  "surge_ft": 1.12,
+  "observed_ft": 9.832,
+  "observed_at": "2026-11-26 00:00",
+  "predicted_ft": null,
+  "surge_ft": null,
   "series": [
-   {
-    "t": "2026-11-26 16:12",
-    "v": 2.232
-   },
-   {
-    "t": "2026-11-26 16:18",
-    "v": 1.951
-   },
-   {
-    "t": "2026-11-26 16:24",
-    "v": 1.676
-   },
    {
     "t": "2026-11-26 16:30",
     "v": 1.407
@@ -1883,6 +1876,18 @@
    {
     "t": "2026-11-28 10:12",
     "v": 5.044
+   },
+   {
+    "t": "2026-11-28 10:18",
+    "v": 5.303
+   },
+   {
+    "t": "2026-11-28 10:24",
+    "v": 5.563
+   },
+   {
+    "t": "2026-11-28 10:30",
+    "v": 5.822
    }
   ],
   "extremes": [
@@ -1958,10 +1963,10 @@
    "name": "Castle Island (waterside)",
    "kind": "land",
    "primary": false,
-   "at": "2026-11-26 17:00",
-   "s": 27.02,
-   "g": 31.88,
-   "d": 66,
+   "at": "2026-11-26 17:24",
+   "s": 25.27,
+   "g": 30.71,
+   "d": 63,
    "dist_nm": 8,
    "bearing_deg": 202,
    "bearing": "SSW"
@@ -1971,13 +1976,13 @@
    "name": "Boston Approach (16 NM E)",
    "kind": "buoy",
    "primary": true,
-   "at": "2026-11-26T21:20:00.000Z",
+   "at": "2026-11-26T21:50:00.000Z",
    "s": 25.3,
-   "g": 31.1,
-   "d": 60,
+   "g": 33,
+   "d": 70,
    "wv": 7.9,
    "water_f": 52.5,
-   "pressure": 1026.7,
+   "pressure": 1026.1,
    "dist_nm": 14.7,
    "bearing_deg": 118,
    "bearing": "ESE"
@@ -1991,7 +1996,7 @@
    "s": 25.3,
    "g": 29.2,
    "d": 70,
-   "wv": 7.5,
+   "wv": 8.2,
    "water_f": 51.4,
    "pressure": null,
    "dist_nm": 17.1,
@@ -2003,13 +2008,13 @@
    "name": "Isle of Shoals",
    "kind": "buoy",
    "primary": false,
-   "at": "2026-11-26T21:30:00.000Z",
-   "s": 29,
-   "g": 33,
-   "d": 70,
+   "at": "2026-11-26T21:50:00.000Z",
+   "s": 31.1,
+   "g": 36,
+   "d": 60,
    "wv": null,
    "water_f": null,
-   "pressure": 1028,
+   "pressure": 1027.7,
    "dist_nm": 33.3,
    "bearing_deg": 25,
    "bearing": "NNE"
@@ -2019,11 +2024,11 @@
    "name": "Jeffreys Ledge",
    "kind": "buoy",
    "primary": false,
-   "at": "2026-11-26T21:30:00.000Z",
+   "at": "2026-11-26T22:00:00.000Z",
    "s": null,
    "g": null,
    "d": null,
-   "wv": 7.9,
+   "wv": 8.5,
    "water_f": 51.3,
    "pressure": null,
    "dist_nm": 39.7,
@@ -2898,19 +2903,19 @@
   }
  ],
  "current_model": {
-  "time": "2026-11-26T17:00",
+  "time": "2026-11-26T17:30",
   "interval": 900,
-  "temperature_2m": 43.5,
-  "apparent_temperature": 33.4,
-  "relative_humidity_2m": 77,
-  "precipitation": 0.012,
-  "weather_code": 55,
+  "temperature_2m": 43,
+  "apparent_temperature": 33.2,
+  "relative_humidity_2m": 84,
+  "precipitation": 0.02,
+  "weather_code": 61,
   "is_day": 0
  },
  "peaks_7d": {
   "44013": {
-   "gust_kt": 31.1,
-   "at": "2026-11-26T21:20:00.000Z"
+   "gust_kt": 33,
+   "at": "2026-11-26T21:50:00.000Z"
   },
   "44029": {
    "gust_kt": 33,
@@ -2919,6 +2924,30 @@
  },
  "history": {
   "44013": [
+   {
+    "t": "2026-11-26T21:50:00.000Z",
+    "s": 25.3,
+    "g": 33,
+    "d": 70,
+    "wv": 7.9,
+    "p": 1026.1
+   },
+   {
+    "t": "2026-11-26T21:40:00.000Z",
+    "s": 25.3,
+    "g": 33,
+    "d": 70,
+    "wv": 7.9,
+    "p": 1026.3
+   },
+   {
+    "t": "2026-11-26T21:30:00.000Z",
+    "s": 25.3,
+    "g": 33,
+    "d": 60,
+    "wv": null,
+    "p": 1026.7
+   },
    {
     "t": "2026-11-26T21:20:00.000Z",
     "s": 25.3,
@@ -5394,7 +5423,7 @@
     "s": 25.3,
     "g": 29.2,
     "d": 70,
-    "wv": null,
+    "wv": 8.2,
     "p": null
    },
    {
