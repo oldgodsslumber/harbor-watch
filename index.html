@@ -138,6 +138,23 @@ svg{display:block;overflow:visible}
 .loadbig{display:flex;align-items:baseline;gap:8px;font-size:42px;font-weight:800;
   font-variant-numeric:tabular-nums;line-height:1}
 .loadbig small{font-size:12px;font-weight:600;color:var(--tx3);letter-spacing:.3px}
+.linegrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;
+  margin:4px 0 10px}
+.lcell{background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:9px 12px}
+.lcell .l{font-size:10px;letter-spacing:.7px;text-transform:uppercase;color:var(--tx3);font-weight:700}
+.lcell .v{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px}
+.lcell .n{font-size:11px;color:var(--tx3);margin-top:1px}
+.capbar{position:relative;height:26px;border-radius:8px;background:#101822;
+  border:1px solid var(--line);margin:22px 0 10px}
+.capfill{position:absolute;left:0;top:0;bottom:0;border-radius:7px 0 0 7px;
+  transition:width .9s cubic-bezier(.22,.61,.36,1)}
+.capmark{position:absolute;top:-3px;bottom:-3px;width:2px;background:#dceaff;opacity:.8}
+.capmark i{position:absolute;top:-15px;left:50%;transform:translateX(-50%);font-style:normal;
+  font-size:9.5px;font-weight:800;color:#8da7c4;white-space:nowrap}
+.caplbl{position:absolute;right:8px;top:0;line-height:26px;font-size:12px;font-weight:800;
+  color:#e9eff6;text-shadow:0 1px 3px rgba(0,0,0,.9)}
+.rigwarn{font-size:12.5px;line-height:1.5;margin-top:8px;padding:9px 12px;border-radius:10px;
+  background:#2a1a11;border:1px solid #7a4a22;color:#ffd0a8}
 .loadwrap .subline{margin-top:0}
 .loadbar{display:flex;flex-direction:column;gap:6px;margin:0 0 8px}
 .loadbar .lb{height:16px;border-radius:5px;position:relative;min-width:42px}
@@ -281,6 +298,8 @@ svg{display:block;overflow:visible}
 .fld input{background:var(--bg);border:1px solid var(--line);color:var(--tx);border-radius:10px;
   padding:9px 11px;font-size:16px;width:106px;font-family:inherit;font-variant-numeric:tabular-nums}
 .fld input.wide{width:148px}
+.fld select{background:var(--bg);border:1px solid var(--line);color:var(--tx);
+  border-radius:10px;padding:9px 11px;font-size:15px;font-family:inherit;width:140px}
 .btn{background:#1f3a5c;border:1px solid #2d568a;color:#cfe4ff;border-radius:10px;padding:10px 16px;
   font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
 .btn.ghost{background:var(--card2);border-color:var(--line);color:var(--tx2)}
@@ -337,6 +356,25 @@ footer a{color:#6c8ead}
       <button class="btn" id="save">Save &amp; refresh</button>
       <button class="btn ghost" id="testsound">Test alarm</button>
     </div>
+    <div class="frow" style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
+      <div class="fld"><label>Line dia (in)</label><input id="rdia" type="number" step="0.125" inputmode="decimal"></div>
+      <div class="fld"><label>Construction</label>
+        <select id="rcon"><option value="3strand">3-strand</option>
+          <option value="doublebraid">double braid</option></select></div>
+      <div class="fld"><label>Condition</label>
+        <select id="rcond"><option value="new">new</option><option value="good">good</option>
+          <option value="aged">aged</option><option value="unknown">unknown</option>
+          <option value="poor">poor</option></select></div>
+      <div class="fld"><label>Windage ht (ft)</label><input id="rwh" type="number" inputmode="numeric"></div>
+      <div class="fld"><label>LOA (ft)</label><input id="rloa" type="number" inputmode="numeric"></div>
+      <div class="fld"><label>Lying</label>
+        <select id="rexp"><option value="beam">beam-on</option>
+          <option value="bow">bow/stern-on</option></select></div>
+      <div class="fld"><label>Auto thresholds</label>
+        <select id="rauto"><option value="1">from the lines</option>
+          <option value="0">manual</option></select></div>
+    </div>
+    <div class="hint" id="righint"></div>
     <div class="hint">
       <b>Exposed arc</b> is the compass range the mooring has no shelter from. It shades the compass dial,
       outlines gusts on the forecast timeline, and draws a wedge on the map. Default <code>20°–120°</code>
@@ -418,7 +456,7 @@ footer a{color:#6c8ead}
   </div>
 
   <div class="card mb">
-    <h3>Load on the gear <span class="rt">wind force rises with the square of speed</span></h3>
+    <h3>Load on the lines <span class="rt" id="loadrt"></span></h3>
     <div class="loadwrap">
       <div class="loadbig"><span id="loadx">—</span><small>peak vs now</small></div>
       <div class="loadmid">
@@ -428,6 +466,10 @@ footer a{color:#6c8ead}
       </div>
       <div class="subline" id="loadnote"></div>
     </div>
+    <div class="linegrid" id="linegrid"></div>
+    <div class="capbar" id="capbar"></div>
+    <div class="subline" id="capnote"></div>
+    <div class="rigwarn" id="rigwarn"></div>
   </div>
 
   <div class="mb">
@@ -573,11 +615,107 @@ function isDaylight(t, lat, lon){
   if (!s) return true;
   return t >= s.sunrise && t <= s.sunset;
 }
+// Mooring-line load model for a vessel lashed to fixed dolphins.
+//
+// Why first principles rather than a standard: ABYC H-40 Table I is the usual
+// reference for ground tackle, but it only covers 20–60 ft LOA. A 100 ft, 100 ton
+// excursion boat is outside it. The method here is the standard drag equation,
+// and it reproduces ABYC's published 50 ft @ 60 kt figure (6,400 lb) to within
+// about 5%, which is the only validation available.
+//
+// Lashed to dolphins matters: the vessel cannot weathervane, so a beam-on wind
+// stays beam-on. Beam-on load is roughly five times end-on for this hull form.
+
+const RHO = 0.00242;      // slug/ft^3, air near 45 F
+const KT  = 1.6878;       // ft/s per knot
+
+function windLoadLb(V_kt, areaFt2, Cd = 1.2) {
+  return 0.5 * RHO * Math.pow(V_kt * KT, 2) * Cd * areaFt2;
+}
+
+// New breaking strengths, lb. 1" figures are published (New England Ropes /
+// typical catalogue); larger sizes scale with d^2, which slightly UNDER-predicts
+// the published 1-1/4" three-strand (35.3k vs 37.5k), so it errs safe.
+const BASE_1IN = { '3strand': 22600, 'doublebraid': 32750 };
+function lineBreakLb(diaIn, construction = '3strand') {
+  const base = BASE_1IN[construction] ?? BASE_1IN['3strand'];
+  return base * Math.pow(diaIn, 2);
+}
+
+// Condition derates. A line's history is usually unknown, and nylon fatigues:
+// a single winter gale can cycle a dockline thousands of times above its
+// working load, so an old line is not a new line.
+const CONDITION = { new: 1.0, good: 0.85, aged: 0.65, unknown: 0.65, poor: 0.45 };
+
+const RIG_DEFAULTS = {
+  loa: 100, windage_h: 16, beam: 28, exposure: 'beam',
+  dia: 1.0, construction: '3strand', condition: 'unknown',
+  lines: 4, worst_share: 0.5,   // the hardest-working line, not 1/n
+  gust: 1.4,                    // gust + yaw against a fixed structure
+  snatch: 2.0,                  // surge shock on a short, stiff lead
+  splice: 0.9                   // eye splice costs ~10%
+};
+
+function rigAnalysis(rig, V_kt) {
+  const r = { ...RIG_DEFAULTS, ...(rig || {}) };
+  const beamOn = r.exposure !== 'bow';
+  const area = beamOn ? r.loa * r.windage_h : r.beam * r.windage_h;
+  const Cd   = beamOn ? 1.2 : 0.9;
+  const steady = windLoadLb(V_kt, area, Cd);
+  const peak   = steady * r.gust * r.snatch;
+  const worst  = peak * r.worst_share;
+  const brkNew = lineBreakLb(r.dia, r.construction);
+  const brk    = brkNew * (CONDITION[r.condition] ?? 0.65) * r.splice;
+  return {
+    area_ft2: Math.round(area), steady_lb: Math.round(steady),
+    peak_lb: Math.round(peak), worst_line_lb: Math.round(worst),
+    break_new_lb: Math.round(brkNew), break_derated_lb: Math.round(brk),
+    pct_of_break: brk > 0 ? +(worst / brk * 100).toFixed(1) : null
+  };
+}
+
+// Wind speed at which the worst-loaded line reaches `frac` of its derated break.
+function windAtFraction(rig, frac) {
+  const r = { ...RIG_DEFAULTS, ...(rig || {}) };
+  const beamOn = r.exposure !== 'bow';
+  const area = beamOn ? r.loa * r.windage_h : r.beam * r.windage_h;
+  const Cd   = beamOn ? 1.2 : 0.9;
+  const brk  = lineBreakLb(r.dia, r.construction) *
+               (CONDITION[r.condition] ?? 0.65) * r.splice;
+  const k = 0.5 * RHO * KT * KT * Cd * area * r.gust * r.snatch * r.worst_share;
+  return k > 0 ? Math.sqrt(brk * frac / k) : null;
+}
+
+// Thresholds derived from the rig rather than from generic small-craft numbers.
+//   33% — nylon's fatigue region; repeated loading above this shortens life
+//   50% — serious; well past any published working load
+//   80% — approaching failure of the most-loaded line
+function thresholdsFor(rig) {
+  const w = f => { const v = windAtFraction(rig, f); return v == null ? null : Math.round(v); };
+  return { watch: w(0.33), concern: w(0.50), critical: w(0.80),
+           failure: w(1.00) };
+}
 'use strict';
 const DEF={t1:22,t2:30,t3:40,talarm:30,arc1:20,arc2:120,lat:42.465,lon:-70.945,
-  nm:'Lynn Harbor',stn:'KBOS'};
+  nm:'Lynn Harbor',stn:'KBOS',autoTh:1,
+  // 100 ft, ~100 tons, 7.5 ft draft, lashed to dolphins. Line spec unknown —
+  // that unknown is the dominant uncertainty, so it defaults to the cautious end.
+  rig:{loa:100,windage_h:16,beam:28,exposure:'beam',dia:1.0,
+       construction:'3strand',condition:'unknown',lines:4,worst_share:0.5,
+       gust:1.4,snatch:2.0,splice:0.9}};
 let CFG=Object.assign({},DEF);
-try{const s=localStorage.getItem('harborwatch');if(s)CFG=Object.assign(CFG,JSON.parse(s));}catch(e){}
+try{const s=localStorage.getItem('harborwatch');if(s){const p=JSON.parse(s);
+  CFG=Object.assign(CFG,p);CFG.rig=Object.assign({},DEF.rig,p.rig||{});}}catch(e){}
+// Thresholds follow the lines unless the user has taken manual control.
+function applyAutoThresholds(){
+  if(!CFG.autoTh)return;
+  const th=thresholdsFor(CFG.rig);
+  if(th.watch)CFG.t1=th.watch;
+  if(th.concern)CFG.t2=th.concern;
+  if(th.critical)CFG.t3=th.critical;
+  if(CFG.talarm<CFG.t1||CFG.talarm>CFG.t3)CFG.talarm=CFG.t2;
+}
+applyAutoThresholds();
 function saveCfg(){try{localStorage.setItem('harborwatch',JSON.stringify(CFG));}catch(e){}}
 
 const $=id=>document.getElementById(id);
@@ -1178,7 +1316,7 @@ function drawPressure(){
 }
 
 // Wind load rises with the SQUARE of speed, which knots alone hide: 40 kt is not
-// 60% worse than 25 kt, it is 2.6x the force on the ground tackle.
+// 60% worse than 25 kt, it is 2.6x the force on the lines.
 function drawLoad(nowGust,hours){
   const fut=hours.filter(h=>h.t>new Date()&&h.t<new Date(Date.now()+48*3600e3));
   const peak=fut.length?fut.reduce((a,b)=>b.g>a.g?b:a):null;
@@ -1187,7 +1325,7 @@ function drawLoad(nowGust,hours){
   $('loadnow').textContent=n?Math.round(n)+' kt':'—';
   $('loadpk').textContent=peak?Math.round(peak.g)+' kt':'—';
   $('loadpkt').textContent=peak?peak.t.toLocaleString([],{weekday:'short',hour:'numeric'}):'';
-  $('loadx').textContent=ratio?(ratio>=1?'×'+ratio.toFixed(1):'×'+ratio.toFixed(2)):'—';
+  $('loadx').textContent=ratio?'×'+ratio.toFixed(1):'—';
   $('loadx').style.color=ratio>=2?'var(--crit)':ratio>=1.4?'var(--concern)':'var(--tx)';
   const bar=$('loadbar');
   const pct=ratio?Math.min(100,100/Math.max(1,ratio)):100;
@@ -1196,6 +1334,63 @@ function drawLoad(nowGust,hours){
   $('loadnote').textContent=ratio&&peak
     ? 'Peak gust pulls about '+ratio.toFixed(1)+'× as hard as the wind does right now.'
     : 'Waiting for a current reading and a forecast peak.';
+
+  /* ---- what that means in pounds, on the actual lines ---- */
+  const rig=CFG.rig||{};
+  const th=thresholdsFor(rig);
+  const aNow=rigAnalysis(rig,n);
+  const aPk=peak?rigAnalysis(rig,peak.g):null;
+  const tons=lb=>(lb/2000).toFixed(1);
+  const cell=(l,v,n2)=>'<div class="lcell"><div class="l">'+l+'</div><div class="v">'+v+
+    '</div><div class="n">'+(n2||'')+'</div></div>';
+  $('linegrid').innerHTML=
+    cell('Total now',Math.round(aNow.steady_lb).toLocaleString()+' lb',
+      tons(aNow.steady_lb)+' tons of pull, steady')+
+    cell('Peak, worst line',aPk?Math.round(aPk.worst_line_lb).toLocaleString()+' lb':'—',
+      aPk?'with gust and snatch':'')+
+    cell('Line breaking str.',Math.round(aNow.break_derated_lb).toLocaleString()+' lb',
+      'derated from '+Math.round(aNow.break_new_lb).toLocaleString()+' new')+
+    cell('Fails at about',(th.failure||'—')+' kt','on the hardest-working line');
+
+  const pctCap=aPk?Math.min(140,aPk.pct_of_break):(aNow.pct_of_break||0);
+  const col=pctCap>=80?cssv('--crit'):pctCap>=50?cssv('--concern'):
+    pctCap>=33?cssv('--watch'):cssv('--calm');
+  const mark=(f,lab)=>'<div class="capmark" style="left:'+(f/140*100)+
+    '%"><i>'+lab+'</i></div>';
+  $('capbar').innerHTML='<div class="capfill" style="width:'+
+    (Math.min(140,pctCap)/140*100).toFixed(1)+'%;background:'+col+'"></div>'+
+    mark(33,'33%')+mark(50,'50%')+mark(80,'80%')+mark(100,'BREAK')+
+    '<div class="caplbl">'+(aPk?Math.round(aPk.pct_of_break):Math.round(pctCap))+
+    '% of breaking strength at peak</div>';
+  $('capnote').textContent=
+    'Assuming '+(rig.dia||1)+'" '+((rig.construction||'3strand')==='doublebraid'
+      ? 'double braid':'three-strand')+' nylon in '+(rig.condition||'unknown')+
+    ' condition, lying '+((rig.exposure||'beam')==='bow'?'bow or stern to the wind':
+      'beam-on to the wind')+', with the hardest-working line taking half the total. '+
+    'Watch '+th.watch+' kt · concern '+th.concern+' kt · critical '+th.critical+
+    ' kt · estimated failure '+th.failure+' kt.';
+  $('loadrt').textContent=aPk?Math.round(aPk.worst_line_lb).toLocaleString()+
+    ' lb on the worst line at peak':'';
+
+  // The uncertainty is the finding, so say it rather than hide it.
+  const weak=thresholdsFor({...rig,dia:1.0,construction:'3strand',condition:'aged'});
+  const strong=thresholdsFor({...rig,dia:1.5,construction:'doublebraid',condition:'aged'});
+  const pk=peak?peak.g:null;
+  let msg='';
+  if((rig.condition||'unknown')==='unknown'){
+    msg='The lines are unspecified, and that is the weak point in this estimate. '+
+      'A worn 1" three-strand line on this boat is estimated to fail near '+
+      weak.failure+' kt; a sound 1.5" double braid near '+strong.failure+' kt.'+
+      (pk?' Tonight\'s forecast peak is '+Math.round(pk)+' kt — inside that range.':'')+
+      ' Measure a line and set it in Settings and these numbers stop being a guess.';
+  }else if(pk&&th.failure&&pk>=th.failure*0.8){
+    msg='Forecast peak '+Math.round(pk)+' kt is within 20% of the estimated failure '+
+      'wind for these lines ('+th.failure+' kt).';
+  }else{
+    msg='Estimate only — a drag calculation, not a survey. Chafe at the dolphins, '+
+      'not tensile failure, is the usual way mooring lines actually part.';
+  }
+  $('rigwarn').textContent=msg;
 }
 
 function drawWater(){
@@ -1967,8 +2162,20 @@ async function refresh(){
 }
 
 /* ---------- settings & boot ---------- */
-function fillForm(){['t1','t2','t3','talarm','arc1','arc2','lat','lon','nm','stn']
-  .forEach(k=>$(k).value=CFG[k]);}
+function fillForm(){
+  ['t1','t2','t3','talarm','arc1','arc2','lat','lon','nm','stn']
+    .forEach(k=>$(k).value=CFG[k]);
+  const r=CFG.rig||{};
+  $('rdia').value=r.dia; $('rcon').value=r.construction; $('rcond').value=r.condition;
+  $('rwh').value=r.windage_h; $('rloa').value=r.loa; $('rexp').value=r.exposure;
+  $('rauto').value=CFG.autoTh?'1':'0';
+  const th=thresholdsFor(r);
+  $('righint').innerHTML='<b>The lines are the unknown.</b> ABYC\'s load table stops at '+
+    '60 ft, so these come from a drag calculation for a '+r.loa+' ft hull with '+
+    r.windage_h+' ft of profile, checked against the one ABYC figure it overlaps '+
+    '(50 ft at 60 kt) to within 5%. With the current spec the hardest-working line '+
+    'is estimated to part near <b>'+th.failure+' kt</b>. Set the real diameter and '+
+    'construction and the thresholds move with it.';}
 $('gearbtn').onclick=()=>{$('panel').classList.toggle('show');fillForm();};
 $('save').onclick=()=>{
   ['t1','t2','t3','talarm','arc1','arc2'].forEach(k=>{
@@ -1977,6 +2184,14 @@ $('save').onclick=()=>{
   if(isFinite(la))CFG.lat=la;if(isFinite(lo))CFG.lon=lo;
   if($('nm').value.trim())CFG.nm=$('nm').value.trim();
   if($('stn').value.trim())CFG.stn=$('stn').value.trim().toUpperCase();
+  CFG.rig=CFG.rig||{};
+  const rn=(id,k)=>{const v=parseFloat($(id).value);if(isFinite(v)&&v>0)CFG.rig[k]=v;};
+  rn('rdia','dia'); rn('rwh','windage_h'); rn('rloa','loa');
+  CFG.rig.construction=$('rcon').value;
+  CFG.rig.condition=$('rcond').value;
+  CFG.rig.exposure=$('rexp').value;
+  CFG.autoTh=$('rauto').value==='1'?1:0;
+  applyAutoThresholds();
   saveCfg();$('panel').classList.remove('show');alarmArmed=true;
   if(map){fittedOnce=false;fitAll(true);}
   refresh();};

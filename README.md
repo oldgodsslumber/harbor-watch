@@ -42,6 +42,27 @@ Caveat worth knowing: CO-OPS station 8443970 (Boston) serves water level but
 **not** the wind product — that endpoint returns an error. Live wind comes from
 KBOS instead.
 
+## Mooring loads
+
+ABYC H-40, the table everyone quotes for ground tackle, covers 20–60 ft. This
+boat is 100 ft and ~100 tons, so `scripts/rig.mjs` computes from the drag
+equation instead. The only available validation is the one point where the
+ranges touch: the method reproduces ABYC's published 50 ft @ 60 kt figure
+(6,400 lb) to within 5%, and `test/rig.test.mjs` asserts it.
+
+Lashed to dolphins is the important detail — the vessel cannot weathervane, so
+a beam-on wind stays beam-on, and beam-on load is about five times end-on.
+
+Thresholds are derived from the line spec rather than from generic small-craft
+numbers, and move when you change it in Settings. The default is deliberately
+the cautious end, because the line spec is unknown and the plausible range is
+wide: a worn 1" three-strand line is estimated to part near 38 kt, a sound 1.5"
+double braid near 68 kt. **That range straddles an ordinary winter gale here**,
+which is why measuring a line matters more than any refinement to the model.
+
+None of this is a survey. Chafe at the dolphins, not tensile failure, is the
+usual way mooring lines actually part.
+
 ## Data retention
 
 `data/latest.json` is rewritten and committed every 10 minutes, so its size is
@@ -88,6 +109,7 @@ Site-level defaults (buoy list, zones, history length) are at the top of
     node test/parser.test.mjs    # 11 — NDBC parsing against a real captured file
     node test/sun.test.mjs       #  7 — sun times vs NWS published values
     node test/archive.test.mjs   #  9 — day flushing, rollup, no-rewrite guarantee
+    node test/rig.test.mjs       # 11 — mooring load model, validated against ABYC
 
 The parser assertion that matters: `WVHT` is `MM` on most rows, so it scans down
 per-field for the most recent real value instead of trusting the newest row.

@@ -35,6 +35,7 @@ jobs:
           node test/parser.test.mjs
           node test/sun.test.mjs
           node test/archive.test.mjs
+          node test/rig.test.mjs
 
       - name: Collect
         run: node scripts/collect.mjs
