@@ -132,6 +132,27 @@ svg{display:block;overflow:visible}
 .ltwhen{font-size:12.5px;line-height:1.45;color:var(--tx2);font-variant-numeric:tabular-nums}
 .ltwhen b{color:var(--tx)}
 .ltwhen .on{color:var(--crit);font-weight:700}
+.daylight{font-size:13px;color:var(--tx2);margin:-6px 0 14px;line-height:1.45}
+.daylight b{color:var(--watch)}
+.daylight .gone{color:var(--crit);font-weight:700}
+.bigline{display:flex;align-items:baseline;gap:7px;font-size:34px;font-weight:800;
+  font-variant-numeric:tabular-nums;line-height:1.1}
+.bigline small{font-size:13px;font-weight:600;color:var(--tx3)}
+.subline{font-size:12.5px;color:var(--tx2);margin-top:6px;line-height:1.45}
+.loadbar{display:flex;flex-direction:column;gap:6px;margin:12px 0 8px}
+.loadbar .lb{height:16px;border-radius:5px;position:relative;min-width:42px}
+.loadbar .lb.now{background:#33506d}
+.loadbar .lb.pk{background:var(--concern);width:100%}
+.loadbar .lb span{position:absolute;right:7px;top:0;line-height:16px;font-size:10px;
+  font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#0b0f14;opacity:.75}
+.loadbar .lb.now span{color:#cfe4ff;opacity:.9}
+.loadrow{display:flex;justify-content:space-between;font-size:12px;color:var(--tx3)}
+.loadrow b{color:var(--tx);font-variant-numeric:tabular-nums}
+.loadrow i{font-style:normal;color:var(--tx3)}
+.alertlist{display:flex;flex-direction:column;gap:9px}
+.alertmore{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.alertmore span{font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:999px;
+  background:rgba(255,255,255,.06);border:1px solid #7a2230;color:#ffb3bb}
 .ltstripwrap{margin-top:14px}
 #ltstrip{width:100%;height:132px}
 .leadbox{background:var(--card2);border-radius:12px;padding:10px 13px;border:1px solid var(--line)}
@@ -246,6 +267,7 @@ footer a{color:#6c8ead}
     <h2><span>⚠︎</span><span id="alertev"></span></h2>
     <div class="when" id="alertwhen"></div>
     <p id="alertdesc"></p>
+    <div class="alertmore" id="alertmore"></div>
   </div>
 
   <div class="panel" id="panel">
@@ -310,6 +332,7 @@ footer a{color:#6c8ead}
   <div class="card mb">
     <h3>When the alarm could trip <span class="rt" id="alarmrt"></span></h3>
     <div class="lthero" id="lthero">—</div>
+    <div class="daylight" id="daylight"></div>
     <div id="ltrows"></div>
     <div class="ltstripwrap">
       <svg id="ltstrip" role="img" aria-labelledby="ltslab"><title id="ltslab">
@@ -356,6 +379,28 @@ footer a{color:#6c8ead}
       <div class="bid">Run the “Collect harbor data” workflow to seed <code>data/latest.json</code></div></div></div>
   </div>
 
+  <div class="grid3 mb">
+    <div class="card">
+      <h3>Barometer <span class="rt" id="barort">NDBC</span></h3>
+      <div class="bigline"><span id="barova">—</span><small>hPa</small></div>
+      <div class="subline" id="barotd">—</div>
+      <svg id="baro" style="width:100%;height:70px" role="img" aria-label="Pressure, last 30 hours"></svg>
+    </div>
+    <div class="card">
+      <h3>Load on the gear</h3>
+      <div class="bigline"><span id="loadx">—</span><small>peak vs now</small></div>
+      <div class="loadbar" id="loadbar"></div>
+      <div class="loadrow"><span>now <b id="loadnow">—</b></span>
+        <span>peak <b id="loadpk">—</b> <i id="loadpkt"></i></span></div>
+      <div class="subline" id="loadnote"></div>
+    </div>
+    <div class="card">
+      <h3>Water temperature</h3>
+      <div class="bigline"><span id="wtemp">—</span></div>
+      <div class="subline" id="wnote"></div>
+    </div>
+  </div>
+
   <div class="card mb">
     <h3>Gust forecast — next 48 hours</h3>
     <div class="tlwrap"><div class="tlnight" id="tlnight"></div><div class="tl" id="tl"></div></div>
@@ -382,6 +427,58 @@ footer a{color:#6c8ead}
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
+// Sunrise / sunset / civil twilight, computed locally so the daylight band can
+// cover any date in the forecast window without a network call.
+// Standard low-precision solar position (SunCalc-equivalent); accurate to well
+// under a minute for these latitudes, which is far finer than we need.
+const rad = Math.PI / 180, J2000 = 2451545, DAY = 86400000;
+
+const toJulian   = d => d.valueOf() / DAY - 0.5 + 2440588;
+const fromJulian = j => new Date((j + 0.5 - 2440588) * DAY);
+const toDays     = d => toJulian(d) - J2000;
+
+const solarMeanAnomaly = d => rad * (357.5291 + 0.98560028 * d);
+function eclipticLongitude(M){
+  const C = rad * (1.9148 * Math.sin(M) + 0.02 * Math.sin(2 * M) + 0.0003 * Math.sin(3 * M));
+  return M + C + rad * 102.9372 + Math.PI;
+}
+const declination = L => Math.asin(Math.sin(rad * 23.4397) * Math.sin(L));
+
+const julianCycle   = (d, lw) => Math.round(d - 0.0009 - lw / (2 * Math.PI));
+const approxTransit = (Ht, lw, n) => 0.0009 + (Ht + lw) / (2 * Math.PI) + n;
+const solarTransitJ = (ds, M, L) => J2000 + ds + 0.0053 * Math.sin(M) - 0.0069 * Math.sin(2 * L);
+function hourAngle(h, phi, d){
+  const x = (Math.sin(h) - Math.sin(phi) * Math.sin(d)) / (Math.cos(phi) * Math.cos(d));
+  if (x > 1) return null;    // sun never rises that high (polar night)
+  if (x < -1) return null;   // sun never sets that low (midnight sun)
+  return Math.acos(x);
+}
+
+// angle: -0.833 deg = sunrise/sunset (refraction + solar radius), -6 = civil twilight
+function event(date, lat, lon, angleDeg){
+  const lw = rad * -lon, phi = rad * lat;
+  const d = toDays(date), n = julianCycle(d, lw), ds = approxTransit(0, lw, n);
+  const M = solarMeanAnomaly(ds), L = eclipticLongitude(M), dec = declination(L);
+  const Jnoon = solarTransitJ(ds, M, L);
+  const w = hourAngle(rad * angleDeg, phi, dec);
+  if (w === null) return null;
+  const Jset = solarTransitJ(approxTransit(w, lw, n), M, L);
+  return { rise: fromJulian(Jnoon * 2 - Jset), set: fromJulian(Jset), noon: fromJulian(Jnoon) };
+}
+
+function sunTimes(date, lat, lon){
+  const s = event(date, lat, lon, -0.833);
+  const c = event(date, lat, lon, -6);
+  return s ? { sunrise: s.rise, sunset: s.set, solarNoon: s.noon,
+               dawn: c ? c.rise : null, dusk: c ? c.set : null } : null;
+}
+
+// True when `t` falls between sunrise and sunset for its own local day.
+function isDaylight(t, lat, lon){
+  const s = sunTimes(t, lat, lon);
+  if (!s) return true;
+  return t >= s.sunrise && t <= s.sunset;
+}
 'use strict';
 const DEF={t1:22,t2:30,t3:40,talarm:30,arc1:20,arc2:120,lat:42.465,lon:-70.945,
   nm:'Lynn Harbor',stn:'KBOS'};
@@ -852,7 +949,21 @@ function drawLeadTime(hours,liveGust){
   const x1=new Date(now.getTime()+48*3600e3).getTime();
   const sx=v=>L+((v-x0)/(x1-x0))*(W-L-R);
 
-  // Grid first, so hour lines sit BEHIND the blocks — drawn on top they slice a
+  // Night shading first of all, then grid, then blocks.
+  {
+    let run=null;const dark=[];
+    for(let ms2=x0;ms2<=x1;ms2+=1800e3){
+      const d2=new Date(ms2),night=!isDaylight(d2,CFG.lat,CFG.lon);
+      if(night&&!run)run={a:ms2,b:ms2};
+      else if(night)run.b=ms2;
+      else if(run){dark.push(run);run=null;}
+    }
+    if(run)dark.push(run);
+    dark.forEach(r=>svg.appendChild(el('rect',{x:sx(r.a),y:T-4,
+      width:Math.max(1,sx(r.b)-sx(r.a)),height:3*(laneH+laneGap)-laneGap+8,
+      fill:'#78a0d2',opacity:.07})));
+  }
+  // Grid next, so hour lines sit BEHIND the blocks — drawn on top they slice a
   // single long blow into what looks like several separate ones.
   for(let ms2=x0;ms2<=x1;ms2+=6*3600e3){
     const d=new Date(ms2);
@@ -885,6 +996,86 @@ function drawLeadTime(hours,liveGust){
     stroke:'#dceaff','stroke-width':1.5,'stroke-dasharray':'3 3',opacity:.9}));
   svg.appendChild(el('text',{x:nx2,y:T-10,'text-anchor':'middle',
     class:'svgtick',fill:'#dceaff'},'now'));
+}
+
+/* ---------- barometer, gear load, water temp ---------- */
+function drawPressure(){
+  const svg=$('baro');svg.textContent='';
+  const bs=SNAP&&SNAP.buoys?Object.values(SNAP.buoys):[];
+  const b=bs.find(x=>x.pressure_hpa!=null);
+  const hist=SNAP&&SNAP.history?(SNAP.history[b?b.id:'']||[]):[];
+  const pts=hist.filter(s=>s.p!=null)
+    .map(s=>({x:new Date(s.t).getTime(),y:s.p}))
+    .filter(s=>s.x>Date.now()-30*3600e3).sort((a,b2)=>a.x-b2.x);
+  const tend=b?b.pressure_tendency_hpa:null;
+  // NWS calls 3 hPa in 3 h a rapid change; 6 is a storm deepening overhead.
+  const sev=tend==null?0:Math.abs(tend)>=6?3:Math.abs(tend)>=3?2:Math.abs(tend)>=1?1:0;
+  const col=tend==null?'#64768c':tend<0?cssv(TVAR[Math.min(3,sev)]):cssv('--ok');
+  $('barova').textContent=b&&b.pressure_hpa!=null?b.pressure_hpa.toFixed(1):'—';
+  $('barotd').textContent=tend==null?'no tendency':
+    (tend>0?'+':'')+tend.toFixed(1)+' hPa / 3 h '+
+    (tend<=-3?'— falling fast':tend<0?'— falling':tend>0?'— rising':'— steady');
+  $('barotd').style.color=col;
+  if(pts.length<3){svg.setAttribute('viewBox','0 0 240 70');
+    svg.appendChild(el('text',{x:120,y:40,'text-anchor':'middle',class:'svgtick',
+      fill:'#64768c'},'not enough history yet'));return;}
+  const W=Math.max(200,Math.round(svg.getBoundingClientRect().width)||240),H=70;
+  svg.setAttribute('viewBox','0 0 '+W+' '+H);
+  const x0=pts[0].x,x1=pts[pts.length-1].x;
+  let lo=Math.min.apply(null,pts.map(p=>p.y)),hi=Math.max.apply(null,pts.map(p=>p.y));
+  if(hi-lo<2){const m=(hi+lo)/2;lo=m-1;hi=m+1;}
+  const sx=v=>6+((v-x0)/(x1-x0||1))*(W-12);
+  const sy=v=>8+(1-(v-lo)/(hi-lo))*(H-24);
+  const d=pts.map((p,i)=>(i?'L':'M')+sx(p.x).toFixed(1)+','+sy(p.y).toFixed(1)).join(' ');
+  svg.appendChild(el('path',{d:d+' L'+sx(x1).toFixed(1)+','+(H-10)+' L'+sx(x0).toFixed(1)+
+    ','+(H-10)+' Z',fill:col,opacity:.13}));
+  svg.appendChild(el('path',{d:d,fill:'none',stroke:col,'stroke-width':2,
+    'stroke-linejoin':'round'}));
+  const last=pts[pts.length-1];
+  svg.appendChild(el('circle',{cx:sx(last.x),cy:sy(last.y),r:3.5,fill:col,
+    stroke:'#151d27','stroke-width':1.5}));
+  svg.appendChild(el('text',{x:6,y:H-1,class:'svgtick',fill:'#4a5a6e'},
+    Math.round((Date.now()-x0)/3600e3)+' h ago'));
+  svg.appendChild(el('text',{x:W-6,y:H-1,'text-anchor':'end',class:'svgtick',
+    fill:'#4a5a6e'},'now'));
+}
+
+// Wind load rises with the SQUARE of speed, which knots alone hide: 40 kt is not
+// 60% worse than 25 kt, it is 2.6x the force on the ground tackle.
+function drawLoad(nowGust,hours){
+  const fut=hours.filter(h=>h.t>new Date()&&h.t<new Date(Date.now()+48*3600e3));
+  const peak=fut.length?fut.reduce((a,b)=>b.g>a.g?b:a):null;
+  const n=nowGust||0;
+  const ratio=(n>0&&peak)?Math.pow(peak.g/n,2):null;
+  $('loadnow').textContent=n?Math.round(n)+' kt':'—';
+  $('loadpk').textContent=peak?Math.round(peak.g)+' kt':'—';
+  $('loadpkt').textContent=peak?peak.t.toLocaleString([],{weekday:'short',hour:'numeric'}):'';
+  $('loadx').textContent=ratio?(ratio>=1?'×'+ratio.toFixed(1):'×'+ratio.toFixed(2)):'—';
+  $('loadx').style.color=ratio>=2?'var(--crit)':ratio>=1.4?'var(--concern)':'var(--tx)';
+  const bar=$('loadbar');
+  const pct=ratio?Math.min(100,100/Math.max(1,ratio)):100;
+  bar.innerHTML='<div class="lb now" style="width:'+pct.toFixed(1)+
+    '%"><span>now</span></div><div class="lb pk"><span>peak</span></div>';
+  $('loadnote').textContent=ratio&&peak
+    ? 'Peak gust pulls about '+ratio.toFixed(1)+'× as hard as the wind does right now.'
+    : 'Waiting for a current reading and a forecast peak.';
+}
+
+function drawWater(){
+  const bs=SNAP&&SNAP.buoys?Object.values(SNAP.buoys):[];
+  const b=bs.find(x=>x.water_temp_f!=null);
+  const f=b?b.water_temp_f:null;
+  $('wtemp').textContent=f==null?'—':Math.round(f)+'°F';
+  if(f==null){$('wnote').textContent='';return;}
+  // Rough US Coast Guard / cold-water-immersion guidance bands.
+  let band,col;
+  if(f<40){band='Exhaustion in under 15 min';col='--crit';}
+  else if(f<50){band='Exhaustion in 15–30 min';col='--crit';}
+  else if(f<60){band='Exhaustion in 30–60 min';col='--concern';}
+  else if(f<70){band='Exhaustion in 1–2 h';col='--watch';}
+  else {band='Low immersion risk';col='--calm';}
+  $('wtemp').style.color='var('+col+')';
+  $('wnote').textContent=band+' if someone goes in. Wear a PFD in the tender.';
 }
 
 /* ---------- map ---------- */
@@ -1125,15 +1316,22 @@ function summarizeAlert(p){
 }
 function renderAlerts(list){
   const box=$('alertbox');
-  if(!list||!list.length){box.classList.remove('show');setFeed('nws',true,'NWS clear');return;}
+  if(!list||!list.length){box.classList.remove('show');$('alertmore').innerHTML='';
+    setFeed('nws',true,'NWS clear');return;}
   const p=list[0];
   $('alertev').textContent=p.event+' — '+(p.area||p.areaDesc||'');
   const f=t=>t?new Date(t).toLocaleString([],{weekday:'short',hour:'numeric',minute:'2-digit'}):'—';
   $('alertwhen').textContent='In effect '+f(p.onset)+'  →  '+f(p.ends)+
     (list.length>1?'   (+'+(list.length-1)+' more active)':'');
   $('alertdesc').textContent=summarizeAlert(p);
+  // Freezing Spray rides along with November gales and Coastal Flood comes from
+  // the land zone; showing only the top-ranked one hid them entirely.
+  const more=list.slice(1);
+  $('alertmore').innerHTML=more.map(a=>'<span>'+a.event+
+    (a.area?' · '+a.area:'')+'</span>').join('');
   box.classList.add('show');
-  setFeed('nws',true,'NWS '+p.event.replace(' Warning','').replace(' Advisory',''));
+  setFeed('nws',true,'NWS '+p.event.replace(' Warning','').replace(' Advisory','')+
+    (more.length?' +'+more.length:''));
 }
 function renderBuoys(){
   const bs=SNAP&&SNAP.buoys?Object.values(SNAP.buoys):[];
@@ -1199,8 +1397,8 @@ function render(){
         ' kt gust, '+Math.round(h.s)+' kt sustained, '+compass(h.d)+'"></div>';}).join('');
     $('expribbon').innerHTML=win.map(h=>'<div class="'+(inArc(h.d)?'on':'')+
       '" title="'+compass(h.d)+'"></div>').join('');
-    $('tlnight').innerHTML=win.map(h=>{const hr=h.t.getHours();
-      return '<div class="'+((hr>=20||hr<6)?'on':'')+'"></div>';}).join('');
+    $('tlnight').innerHTML=win.map(h=>
+      '<div class="'+(isDaylight(h.t,CFG.lat,CFG.lon)?'':'on')+'"></div>').join('');
     const wrap=document.querySelector('.tlwrap');
     wrap.querySelectorAll('.thr').forEach(n=>n.remove());
     [[CFG.t1,'watch'],[CFG.t2,'concern'],[CFG.t3,'critical']].forEach(([v,lab])=>{
@@ -1211,6 +1409,29 @@ function render(){
       h.t.toLocaleTimeString([],{hour:'numeric'}).replace(' ',''):'')+'</div>').join('');
   }
 
+  // Sunset today is 4:14 PM — the old hardcoded 20:00 "night" called four hours
+  // of darkness daylight, and the alarm threshold is crossed after sunset.
+  (function(){
+    const sun=sunTimes(now,CFG.lat,CFG.lon),dl=$('daylight');
+    if(!sun){dl.textContent='';return;}
+    const cross=fut.find(h=>h.g>=CFG.talarm);
+    const after=cross?cross.t>sun.sunset:false;
+    if(now<sun.sunrise){
+      dl.innerHTML='Dark — sunrise <b>'+hhmm(sun.sunrise)+'</b> ('+
+        fmtDur(sun.sunrise-now)+' away), sunset '+hhmm(sun.sunset)+'.';
+    }else if(now<=sun.sunset){
+      dl.innerHTML='Daylight for another <b>'+fmtDur(sun.sunset-now)+'</b> — sunset '+
+        hhmm(sun.sunset)+', dark by '+hhmm(sun.dusk)+'.'+
+        (after?' <span class="gone">The alarm level is crossed after dark.</span>':'');
+    }else{
+      const tm=sunTimes(new Date(now.getTime()+86400000),CFG.lat,CFG.lon);
+      dl.innerHTML='<span class="gone">Dark since '+hhmm(sun.sunset)+'.</span>'+
+        (tm?' Next daylight '+hhmm(tm.sunrise)+' ('+fmtDur(tm.sunrise-now)+' away).':'');
+    }
+  })();
+  drawPressure();
+  drawLoad(g,HOURS);
+  drawWater();
   $('locname').textContent=CFG.nm;
   $('updated').textContent='Updated '+hhmm(now)+' · auto-refresh 5 min';
   drawMarkers();

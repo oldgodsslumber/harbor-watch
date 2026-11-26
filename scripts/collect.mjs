@@ -11,7 +11,10 @@ const BUOYS = [
   { id: '44013', name: 'Boston Approach (16 NM E)', lat: 42.35, lon: -70.651 },
   { id: '44029', name: 'Buoy A01 — Massachusetts Bay', lat: 42.523, lon: -70.566 }
 ];
-const ZONES = 'ANZ230,ANZ251';
+// Marine zones carry Gale/Small Craft. Coastal Flood and High Wind warnings are
+// issued on the LAND zone (MAZ007, Eastern Essex) — a surge-on-high-tide event,
+// exactly what the tide module exists to catch, appears only there.
+const ZONES = 'ANZ230,ANZ251,MAZ007';
 const OBS_STATION = 'KBOS';
 const TIDE_STATION = '8443970';
 const HISTORY_DAYS = 7;
@@ -58,8 +61,11 @@ const obs = await tryGet('nws obs', async () => {
 const alerts = await tryGet('nws alerts', async () => {
   const g = await j('https://api.weather.gov/alerts/active?zone=' + ZONES,
     { headers: { Accept: 'application/geo+json' } });
-  const rank = { 'Hurricane Force Wind Warning': 7, 'Storm Warning': 6, 'Gale Warning': 5,
-                 'Special Marine Warning': 4, 'Small Craft Advisory': 3 };
+  const rank = { 'Hurricane Force Wind Warning': 8, 'Storm Warning': 7, 'Gale Warning': 6,
+                 'Coastal Flood Warning': 6, 'High Wind Warning': 5,
+                 'Special Marine Warning': 5, 'Coastal Flood Advisory': 4,
+                 'Freezing Spray Advisory': 4, 'High Wind Watch': 3,
+                 'Small Craft Advisory': 3, 'Coastal Flood Watch': 3 };
   return (g.features || [])
     .map(f => f.properties)
     .sort((a, b) => (rank[b.event] || 1) - (rank[a.event] || 1))

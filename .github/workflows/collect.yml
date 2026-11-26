@@ -30,8 +30,10 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Run parser tests
-        run: node test/parser.test.mjs
+      - name: Run tests
+        run: |
+          node test/parser.test.mjs
+          node test/sun.test.mjs
 
       - name: Collect
         run: node scripts/collect.mjs

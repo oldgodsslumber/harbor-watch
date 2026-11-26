@@ -56,6 +56,7 @@ export function summarize(text, meta) {
   const dpd  = latest(rows, 'DPD');
   const mwd  = latest(rows, 'MWD');
   const pres = latest(rows, 'PRES');
+  const ptdy = latest(rows, 'PTDY');   // 3-hourly pressure tendency, hPa
   const atmp = latest(rows, 'ATMP');
   const wtmp = latest(rows, 'WTMP');
 
@@ -65,8 +66,9 @@ export function summarize(text, meta) {
     const g = r.GST  === 'MM' ? null : Number(r.GST)  * MS_TO_KT;
     const w = r.WVHT === 'MM' ? null : Number(r.WVHT) * M_TO_FT;
     const d = r.WDIR === 'MM' ? null : Number(r.WDIR);
-    if (s == null && g == null && w == null) return null;
-    return { t: r._t.toISOString(), s: r1(s), g: r1(g), d, wv: r1(w) };
+    const pr = r.PRES === 'MM' ? null : Number(r.PRES);
+    if (s == null && g == null && w == null && pr == null) return null;
+    return { t: r._t.toISOString(), s: r1(s), g: r1(g), d, wv: r1(w), p: pr };
   }).filter(Boolean);
 
   return {
@@ -88,6 +90,9 @@ export function summarize(text, meta) {
       at: wvht.t.toISOString()
     } : null,
     pressure_hpa: pres ? pres.v : null,
+    // A falling barometer is the oldest storm warning there is; NDBC gives the
+    // 3-hour tendency directly and we were discarding it.
+    pressure_tendency_hpa: ptdy ? ptdy.v : null,
     air_temp_f:   atmp ? r1(atmp.v * 9 / 5 + 32) : null,
     water_temp_f: wtmp ? r1(wtmp.v * 9 / 5 + 32) : null,
     samples

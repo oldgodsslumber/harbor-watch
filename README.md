@@ -23,7 +23,7 @@ Writes come only from the Action. Anyone can read the page and the JSON.
 | Source | Gives | CORS |
 |---|---|---|
 | NDBC `realtime2/44013`, `44029` | on-water wind, gusts, wave height, period | **no** — Action only |
-| `api.weather.gov/alerts/active` | Gale / Small Craft warnings, zones ANZ230 + ANZ251 | yes |
+| `api.weather.gov/alerts/active` | Gale / Small Craft (marine zones ANZ230 + ANZ251) **and** Coastal Flood / High Wind (land zone MAZ007) | yes |
 | `api.weather.gov/stations/KBOS` | live observed wind | yes |
 | Open-Meteo | hourly gust forecast, 3 days | yes |
 | NOAA CO-OPS `8443970` | water level, tide predictions, surge | yes |
@@ -56,11 +56,17 @@ Site-level defaults (buoy list, zones, history length) are at the top of
 
 ## Tests
 
-    node test/parser.test.mjs
+    node test/parser.test.mjs    # 11 — NDBC parsing against a real captured file
+    node test/sun.test.mjs       #  7 — sun times vs NWS published values
 
-11 assertions against a real captured buoy file. The one that matters: `WVHT`
-is `MM` on most rows, so the parser scans down per-field for the most recent
-real value instead of trusting the newest row.
+The parser assertion that matters: `WVHT` is `MM` on most rows, so it scans down
+per-field for the most recent real value instead of trusting the newest row.
+
+The sun assertion that matters: 5 PM on 26 Nov is **dark** at this latitude.
+Sunset is 4:14 PM, so the hardcoded 20:00 "night" the page started with was
+calling four hours of darkness daylight — on a day the alarm threshold is
+crossed after sunset. Times are checked against `astronomicalData` from
+`api.weather.gov/points`.
 
 ## Not a safety system
 
