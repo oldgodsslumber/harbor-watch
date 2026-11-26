@@ -50,11 +50,19 @@ const obs = await tryGet('nws obs', async () => {
     if (u.includes('m_s')) return +(o.value * 1.94384).toFixed(1);
     return o.value;
   };
+  const F = c => (c == null ? null : +(c * 9 / 5 + 32).toFixed(1));
   return {
     station: OBS_STATION, name: p.stationName, observed_at: p.timestamp,
     sustained_kt: kt(p.windSpeed), gust_kt: kt(p.windGust),
     dir_deg: p.windDirection?.value ?? null,
-    text: p.textDescription || null
+    text: p.textDescription || null,
+    temp_f: F(p.temperature?.value),
+    dewpoint_f: F(p.dewpoint?.value),
+    windchill_f: F(p.windChill?.value),
+    humidity_pct: p.relativeHumidity?.value == null ? null
+      : Math.round(p.relativeHumidity.value),
+    visibility_mi: p.visibility?.value == null ? null
+      : +(p.visibility.value / 1609.344).toFixed(1)
   };
 });
 
@@ -75,14 +83,25 @@ const alerts = await tryGet('nws alerts', async () => {
 });
 
 const forecast = await tryGet('open-meteo', async () => {
+  // Units are per-quantity: knots for wind, Fahrenheit, inches of precip.
   const d = await j('https://api.open-meteo.com/v1/forecast?latitude=' + HARBOR.lat +
     '&longitude=' + HARBOR.lon +
-    '&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation' +
-    '&wind_speed_unit=kn&forecast_days=3&timezone=America%2FNew_York');
-  return d.hourly.time.map((t, i) => ({
-    t, s: d.hourly.wind_speed_10m[i], g: d.hourly.wind_gusts_10m[i],
-    d: d.hourly.wind_direction_10m[i], p: d.hourly.precipitation[i]
-  }));
+    '&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,' +
+    'precipitation_probability,snowfall,weather_code,temperature_2m,apparent_temperature' +
+    '&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,' +
+    'weather_code,is_day' +
+    '&wind_speed_unit=kn&temperature_unit=fahrenheit&precipitation_unit=inch' +
+    '&forecast_days=3&timezone=America%2FNew_York');
+  const h = d.hourly;
+  return {
+    current: d.current || null,
+    hours: h.time.map((t, i) => ({
+      t, s: h.wind_speed_10m[i], g: h.wind_gusts_10m[i], d: h.wind_direction_10m[i],
+      p: h.precipitation[i], pp: h.precipitation_probability[i],
+      sn: h.snowfall[i], wc: h.weather_code[i],
+      tc: h.temperature_2m[i], fl: h.apparent_temperature[i]
+    }))
+  };
 });
 
 const tide = await tryGet('co-ops', async () => {
@@ -168,7 +187,9 @@ for (const [id, arr] of Object.entries(history)) {
 const out = {
   generated_at: new Date().toISOString(),
   harbor: HARBOR,
-  buoys, obs, alerts, forecast, tide,
+  buoys, obs, alerts, tide,
+  forecast: forecast ? forecast.hours : null,
+  current_model: forecast ? forecast.current : null,
   peaks_7d: peaks,
   history,
   stale: false,

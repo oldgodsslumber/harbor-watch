@@ -110,25 +110,13 @@ svg{display:block;overflow:visible}
   font-variant-numeric:tabular-nums}
 .lthero small{display:block;font-size:12.5px;font-weight:600;color:var(--tx3);
   letter-spacing:.3px;margin-top:3px}
-.ltrow{display:grid;grid-template-columns:140px 1fr 118px 232px;gap:13px;
-  align-items:center;padding:10px 0;border-top:1px solid var(--line)}
-@media(max-width:1000px){.ltrow{grid-template-columns:140px 1fr 118px;row-gap:6px}
-  .ltrow .ltwhen{grid-column:1/-1}}
-@media(max-width:600px){.ltrow{grid-template-columns:1fr 112px}
-  .ltrow .ltmeter{grid-column:1/-1;order:3}
-  .ltrow .ltwhen{order:4}}
+.ltrow2{display:grid;grid-template-columns:140px 1fr;gap:14px;align-items:center;
+  padding:9px 0;border-top:1px solid var(--line)}
+.ltrow2.on .ltwhen b{color:var(--crit)}
+.ltwhen .dim{color:var(--tx3)}
 .ltchip{font-size:11.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;
   padding:6px 9px;border-radius:7px;text-align:center;background:var(--card2);
   border:1px solid var(--line);white-space:nowrap}
-.ltmeter{position:relative;height:22px;border-radius:7px;background:#101822;
-  border:1px solid var(--line);overflow:hidden}
-.ltfill{position:absolute;left:0;top:0;bottom:0;border-radius:6px 0 0 6px;
-  transition:width .9s cubic-bezier(.22,.61,.36,1)}
-.ltcap{position:absolute;right:6px;top:0;line-height:22px;font-size:10.5px;font-weight:700;
-  color:var(--tx3);font-variant-numeric:tabular-nums;letter-spacing:.3px}
-.ltval{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;text-align:right;
-  line-height:1.25}
-.ltval span{display:block;font-size:11px;font-weight:600;color:var(--tx3)}
 .ltwhen{font-size:12.5px;line-height:1.45;color:var(--tx2);font-variant-numeric:tabular-nums}
 .ltwhen b{color:var(--tx)}
 .ltwhen .on{color:var(--crit);font-weight:700}
@@ -158,6 +146,26 @@ svg{display:block;overflow:visible}
 .loadrow{display:flex;justify-content:space-between;font-size:12px;color:var(--tx3)}
 .loadrow b{color:var(--tx);font-variant-numeric:tabular-nums}
 .loadrow i{font-style:normal;color:var(--tx3)}
+.condtop{display:flex;align-items:center;gap:14px}
+.condmain{display:flex;flex-direction:column;gap:1px}
+.condtemp{font-size:46px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.condtext{font-size:14px;color:var(--tx);font-weight:600}
+.condfeels{font-size:12.5px;color:var(--tx3)}
+.condgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:14px}
+@media(max-width:520px){.condgrid{grid-template-columns:repeat(2,1fr)}}
+.cc{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.cc .l{font-size:10px;letter-spacing:.7px;text-transform:uppercase;color:var(--tx3);font-weight:700}
+.cc .v{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px}
+.precipbars{display:flex;gap:10px;align-items:flex-end;height:132px;margin-top:2px}
+.precipbars .nodata{color:var(--tx3);font-size:12.5px;align-self:center}
+.pcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%}
+.pamt{font-size:11.5px;font-weight:700;color:var(--tx3);font-variant-numeric:tabular-nums}
+.pamt.on{color:var(--tx)}
+.ptrack{flex:1;width:100%;max-width:56px;background:#101822;border:1px solid var(--line);
+  border-radius:7px;display:flex;align-items:flex-end;overflow:hidden}
+.pfill{width:100%;border-radius:0 0 6px 6px;transition:height .8s cubic-bezier(.22,.61,.36,1)}
+.ppct{font-size:14px;font-weight:800;font-variant-numeric:tabular-nums}
+.phr{font-size:11px;color:var(--tx3);font-variant-numeric:tabular-nums}
 .alertlist{display:flex;flex-direction:column;gap:9px}
 .alertmore{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
 .alertmore span{font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:999px;
@@ -337,11 +345,35 @@ footer a{color:#6c8ead}
     </div>
   </div>
 
+
+  <div class="grid2b mb">
+    <div class="card">
+      <h3>Current conditions <span class="rt" id="condsrc"></span></h3>
+      <div class="condtop">
+        <svg id="condglyph" width="60" height="56" role="img" aria-label="Sky"></svg>
+        <div class="condmain">
+          <div class="condtemp" id="condtemp">—</div>
+          <div class="condtext" id="condtext">—</div>
+          <div class="condfeels" id="condfeels"></div>
+        </div>
+      </div>
+      <div class="condgrid" id="condgrid"></div>
+    </div>
+    <div class="card">
+      <h3>Precipitation — next 4 hours
+        <span class="rt">total <b id="preciptotal">—</b></span></h3>
+      <div class="precipbars" id="precipbars"></div>
+      <div class="subline" id="precipnote"></div>
+    </div>
+  </div>
+
   <!-- when the alarm could trip -->
   <div class="card mb">
     <h3>When the alarm could trip <span class="rt" id="alarmrt"></span></h3>
     <div class="lthero" id="lthero">—</div>
     <div class="daylight" id="daylight"></div>
+    <svg id="ltscale" style="width:100%;height:100px" role="img"
+         aria-label="Wind now and forecast peak against each threshold"></svg>
     <div id="ltrows"></div>
     <div class="ltstripwrap">
       <svg id="ltstrip" role="img" aria-labelledby="ltslab"><title id="ltslab">
@@ -926,32 +958,76 @@ function drawLeadTime(hours,liveGust){
         pk.t.toLocaleString([],{weekday:'short',hour:'numeric'})+'</small>':'');
   }
 
-  /* one row per threshold: a meter of progress toward it, plus when it trips */
+  /* One scale, not three meters. The old card repeated the same gust in three
+     rows and the gauge above shows it a fourth time; what this card can add is
+     where the wind sits against every threshold at once, and where it is going. */
+  {
+    const svg=$('ltscale');svg.textContent='';
+    const W=Math.max(360,Math.round(svg.getBoundingClientRect().width)||760),H=100;
+    svg.setAttribute('viewBox','0 0 '+W+' '+H);
+    const L=14,R=14,y=46,bh=16;
+    const peak=fut.length?fut.reduce((a,b)=>b.g>a.g?b:a):null;
+    const smax=Math.max(50,CFG.t3+10,
+      Math.ceil(Math.max(liveGust||0,peak?peak.g:0)/10)*10+10);
+    const sx=v=>L+(Math.min(Math.max(v,0),smax)/smax)*(W-L-R);
+    const zones=[[0,CFG.t1,0],[CFG.t1,CFG.t2,1],[CFG.t2,CFG.t3,2],[CFG.t3,smax,3]];
+    zones.forEach(([lo,hi,ti])=>{
+      if(hi<=lo)return;
+      const a=sx(lo),b=sx(hi);
+      svg.appendChild(el('rect',{x:a+(lo===0?0:1),y:y,width:Math.max(2,b-a-(lo===0?1:2)),
+        height:bh,rx:ti===0?6:0,fill:cssv(TVAR[ti]),opacity:.78}));
+    });
+    svg.appendChild(el('rect',{x:L,y:y,width:W-L-R,height:bh,rx:6,fill:'none',
+      stroke:'#2b3a4d','stroke-width':1}));
+    [[CFG.t1,'Watch',1],[CFG.t2,'Concern',2],[CFG.t3,'Critical',3]].forEach(([v,n,ti])=>{
+      const x=sx(v);
+      svg.appendChild(el('line',{x1:x,y1:y-3,x2:x,y2:y+bh+3,stroke:cssv(TVAR[ti]),
+        'stroke-width':2}));
+      svg.appendChild(el('text',{x:x,y:y+bh+17,'text-anchor':'middle','font-size':10.5,
+        'font-weight':800,fill:cssv(TVAR[ti]),style:'letter-spacing:.5px'},
+        n.toUpperCase()));
+      svg.appendChild(el('text',{x:x,y:y+bh+29,'text-anchor':'middle',class:'svgtick',
+        fill:'#64768c'},v+' kt'));
+    });
+    if(peak){                       // where it is heading
+      const x=sx(peak.g);
+      svg.appendChild(el('path',{d:'M'+x+','+(y-6)+' l5,-7 l-10,0 Z',
+        fill:cssv(TVAR[tier(peak.g)]),opacity:.9}));
+      svg.appendChild(el('text',{x:Math.min(W-R,Math.max(L+30,x)),y:y-17,
+        'text-anchor':'middle','font-size':11,'font-weight':700,
+        fill:cssv(TVAR[tier(peak.g)])},
+        'peak '+Math.round(peak.g)+' kt'));
+    }
+    if(liveGust!=null){             // where it is now — stated once
+      const x=sx(liveGust);
+      svg.appendChild(el('circle',{cx:x,cy:y+bh/2,r:9.5,fill:'#0b0f14',
+        stroke:'#e9eff6','stroke-width':3}));
+      svg.appendChild(el('text',{x:Math.min(W-R-18,Math.max(L+18,x)),y:y-17,
+        'text-anchor':'middle','font-size':12.5,'font-weight':800,fill:'#e9eff6'},
+        'now '+Math.round(liveGust)+' kt'));
+    }
+  }
+
+  /* three genuinely different facts: when each level is reached */
   $('ltrows').innerHTML=tiers.map(t=>{
     const col='var('+TVAR[t.i]+')';
-    const pct=liveGust==null?0:Math.min(100,(liveGust/t.v)*100);
     const over=liveGust!=null&&liveGust>=t.v;
-    const gap=liveGust==null?null:Math.round(Math.abs(liveGust-t.v));
     const nx=fut.find(h=>h.g>=t.v);
     const eps=episodes(win,t.v);
-    let when;
+    let when,cls='';
     if(over){
       const ease=fut.find(h=>h.g<t.v);
-      when='<span class="on">Over now</span>'+(ease?' · eases '+
+      cls=' on';
+      when='<b>Over now</b>'+(ease?' · eases '+
         ease.t.toLocaleTimeString([],{hour:'numeric'}):' · no let-up in 48 h');
     }else if(nx){
       const ep=eps.find(e=>e.b>=nx.t);
       const dur=ep?Math.round((ep.b-ep.a)/3600e3)+1:null;
       when='Crosses <b>'+nx.t.toLocaleString([],{weekday:'short',hour:'numeric'})+
-        '</b> · in '+fmtDur(nx.t-now)+(dur?' · ~'+dur+' h above':'');
-    }else when='Not reached in the next 48 h';
-    return '<div class="ltrow">'+
+        '</b> · in '+fmtDur(nx.t-now)+(dur?' · about '+dur+' h above':'');
+    }else when='<span class="dim">Not reached in the next 48 hours</span>';
+    return '<div class="ltrow2'+cls+'">'+
       '<div class="ltchip" style="color:'+col+'">'+t.n+' '+t.v+' kt</div>'+
-      '<div class="ltmeter"><div class="ltfill" style="width:'+pct.toFixed(1)+
-        '%;background:'+(over?col:'#33506d')+'"></div>'+
-        '<div class="ltcap">'+t.v+' kt</div></div>'+
-      '<div class="ltval">'+(liveGust==null?'<span>no data</span>':
-        Math.round(liveGust)+' kt<span>'+gap+(over?' kt over':' kt to go')+'</span>')+'</div>'+
       '<div class="ltwhen">'+when+'</div></div>';
   }).join('');
 
@@ -1187,6 +1263,135 @@ function drawSun(){
     'font-weight':700,fill:daytime?'#ffe066':'#8da7c4'},msg));
 }
 
+/* ---------- WMO weather codes ---------- */
+const WMO={0:['Clear','sun'],1:['Mainly clear','sun'],2:['Partly cloudy','pcloud'],
+  3:['Overcast','cloud'],45:['Fog','fog'],48:['Freezing fog','fog'],
+  51:['Light drizzle','drizzle'],53:['Drizzle','drizzle'],55:['Heavy drizzle','drizzle'],
+  56:['Freezing drizzle','sleet'],57:['Freezing drizzle','sleet'],
+  61:['Light rain','rain'],63:['Rain','rain'],65:['Heavy rain','rain'],
+  66:['Freezing rain','sleet'],67:['Freezing rain','sleet'],
+  71:['Light snow','snow'],73:['Snow','snow'],75:['Heavy snow','snow'],77:['Snow grains','snow'],
+  80:['Showers','rain'],81:['Showers','rain'],82:['Violent showers','rain'],
+  85:['Snow showers','snow'],86:['Snow showers','snow'],
+  95:['Thunderstorm','storm'],96:['Thunderstorm, hail','storm'],99:['Thunderstorm, hail','storm']};
+const wmoLabel=c=>(WMO[c]||['—','cloud'])[0];
+const wmoKind =c=>(WMO[c]||['—','cloud'])[1];
+function skyGlyph(kind,x,y,sc,day){
+  const g=el('g',{transform:'translate('+x+' '+y+') scale('+sc+')'});
+  const cloud=(fill)=>{const c=el('g',{});
+    [[0,0,13],[15,-4,11],[29,1,10]].forEach(([cx,cy,r])=>
+      c.appendChild(el('circle',{cx:cx,cy:cy,r:r,fill:fill})));
+    c.appendChild(el('rect',{x:-1,y:0,width:31,height:12,rx:6,fill:fill}));
+    return c;};
+  if(kind==='sun'||kind==='pcloud'){
+    g.appendChild(el('circle',{cx:day===0?8:4,cy:day===0?-6:-10,r:11,
+      fill:day===0?'#8da7c4':'#ffe066'}));
+    for(let a=0;a<360&&kind==='sun';a+=45){
+      const r1=14,r2=19,rd=a*Math.PI/180;
+      g.appendChild(el('line',{x1:(day===0?8:4)+r1*Math.cos(rd),
+        y1:(day===0?-6:-10)+r1*Math.sin(rd),x2:(day===0?8:4)+r2*Math.cos(rd),
+        y2:(day===0?-6:-10)+r2*Math.sin(rd),stroke:day===0?'#8da7c4':'#ffe066',
+        'stroke-width':2.5,'stroke-linecap':'round'}));
+    }
+  }
+  if(kind!=='sun')g.appendChild(cloud(kind==='storm'?'#55657a':'#93a4b8'));
+  const drops=(col,n,snow)=>{for(let i=0;i<n;i++){
+    const dx=2+i*11;
+    if(snow)g.appendChild(el('text',{x:dx,y:30,'font-size':13,fill:col},'✳'));
+    else g.appendChild(el('line',{x1:dx,y1:18,x2:dx-3,y2:29,stroke:col,
+      'stroke-width':2.5,'stroke-linecap':'round'}));}};
+  if(kind==='drizzle')drops('#6db3f2',3);
+  if(kind==='rain')drops('#4da3ff',3);
+  if(kind==='sleet')drops('#9fd0f5',3);
+  if(kind==='snow')drops('#cfe4ff',3,true);
+  if(kind==='storm'){drops('#4da3ff',2);
+    g.appendChild(el('path',{d:'M26,17 L18,30 L25,30 L20,42 L34,27 L26,27 Z',
+      fill:'#ffe066'}));}
+  if(kind==='fog')for(let i=0;i<3;i++)
+    g.appendChild(el('line',{x1:-4,y1:20+i*6,x2:34,y2:20+i*6,stroke:'#8da7c4',
+      'stroke-width':2.5,'stroke-linecap':'round',opacity:.8-i*.18}));
+  return g;
+}
+
+/* ---------- current conditions ---------- */
+function drawConditions(){
+  const svg=$('condglyph');svg.textContent='';
+  const o=(SNAP&&SNAP.obs)||null, cm=(SNAP&&SNAP.current_model)||null;
+  const nowH=HOURS.length?HOURS.reduce((a,b)=>
+    Math.abs(b.t-Date.now())<Math.abs(a.t-Date.now())?b:a):null;
+  // Observed beats modelled for temperature; the sky code only comes from the model.
+  const temp = (o&&o.temp_f!=null)?o.temp_f:(cm?cm.temperature_2m:(nowH?nowH.tc:null));
+  const feels= (o&&o.windchill_f!=null)?o.windchill_f
+    :(cm?cm.apparent_temperature:(nowH?nowH.fl:null));
+  const code = cm?cm.weather_code:(nowH?nowH.wc:null);
+  const isDay= cm?cm.is_day:(isDaylight(new Date(),CFG.lat,CFG.lon)?1:0);
+  const text = (o&&o.text)?o.text:(code!=null?wmoLabel(code):'—');
+
+  svg.setAttribute('viewBox','0 0 60 56');
+  svg.appendChild(skyGlyph(code==null?'cloud':wmoKind(code),10,18,1,isDay));
+  $('condtemp').textContent=temp==null?'—':Math.round(temp)+'°';
+  $('condtext').textContent=text;
+  $('condfeels').textContent=feels==null?'':'Feels '+Math.round(feels)+'°';
+  const cells=[
+    ['Humidity',(o&&o.humidity_pct!=null)?o.humidity_pct+'%'
+      :(cm&&cm.relative_humidity_2m!=null?cm.relative_humidity_2m+'%':'—')],
+    ['Dew point',(o&&o.dewpoint_f!=null)?Math.round(o.dewpoint_f)+'°':'—'],
+    ['Visibility',(o&&o.visibility_mi!=null)?o.visibility_mi+' mi':'—'],
+    ['Water',(function(){const b=(SNAP&&SNAP.buoys?Object.values(SNAP.buoys):[])
+      .find(x=>x.water_temp_f!=null);return b?Math.round(b.water_temp_f)+'°':'—';})()]
+  ];
+  $('condgrid').innerHTML=cells.map(([l,v])=>
+    '<div class="cc"><div class="l">'+l+'</div><div class="v">'+v+'</div></div>').join('');
+  $('condsrc').textContent=o?o.station+' · '+ago(o.observed_at):'model';
+}
+
+/* ---------- precipitation, next 4 hours ---------- */
+function drawPrecip(){
+  const wrap=$('precipbars');
+  const now=Date.now();
+  const hrs=HOURS.filter(h=>h.t>=new Date(now-3600e3)&&h.t<=new Date(now+4.5*3600e3))
+    .filter(h=>h.pp!=null||h.p!=null).slice(0,5);
+  if(!hrs.length){wrap.innerHTML='<div class="nodata">no precipitation forecast loaded</div>';
+    $('preciptotal').textContent='—';$('precipnote').textContent='';return;}
+  const next4=hrs.filter(h=>h.t>new Date(now-60*60e3)).slice(0,4);
+  const total=next4.reduce((a,h)=>a+(h.p||0),0);
+  const snow=next4.reduce((a,h)=>a+(h.sn||0),0);
+  // Chance drives the bar height — it is the question being asked. Amount is a
+  // label, and the fill colour deepens with it so a likely drizzle and a likely
+  // soaking do not look identical.
+  const amtStr=a=>a<=0?'—':a<0.01?'trace':a.toFixed(2)+'"';
+  wrap.innerHTML=next4.map(h=>{
+    const pp=h.pp==null?0:h.pp;
+    const amt=h.p||0;
+    const kind=wmoKind(h.wc);
+    const col=kind==='snow'?'#cfe4ff':kind==='sleet'?'#9fd0f5':
+      amt>=0.2?'#1d5fa8':amt>=0.05?'#2f7fd4':amt>0?'#4da3ff':'#3d5570';
+    return '<div class="pcol" title="'+wmoLabel(h.wc)+' · '+Math.round(pp)+
+      '% chance · '+amtStr(amt)+'">'+
+      '<div class="pamt'+(amt>0?' on':'')+'">'+amtStr(amt)+'</div>'+
+      '<div class="ptrack"><div class="pfill" style="height:'+
+        Math.max(2,pp).toFixed(0)+'%;background:'+col+'"></div></div>'+
+      '<div class="ppct"'+(pp>=50?' style="color:var(--calm)"':'')+'>'+
+        Math.round(pp)+'%</div>'+
+      '<div class="phr">'+h.t.toLocaleTimeString([],{hour:'numeric'}).replace(' ','')+
+      '</div></div>';
+  }).join('');
+  $('preciptotal').textContent=total<=0?'none':total<0.01?'trace':total.toFixed(2)+'"';
+  $('preciptotal').style.color=total>=0.25?'var(--concern)':
+    total>0?'var(--calm)':'var(--tx3)';
+  const first=next4.find(h=>(h.pp||0)>=40||(h.p||0)>0);
+  const later=HOURS.filter(h=>h.t>new Date(now)&&h.t<new Date(now+18*3600e3));
+  const worst=later.length?later.reduce((a,b)=>((b.p||0)>(a.p||0)?b:a)):null;
+  const bits=[];
+  if(snow>0)bits.push(Math.round(snow*100)/100+'" snow in the mix');
+  if(first)bits.push((wmoLabel(first.wc)||'precipitation').toLowerCase()+' from about '+
+    first.t.toLocaleTimeString([],{hour:'numeric'}));
+  else bits.push('nothing expected in the next 4 hours');
+  if(worst&&(worst.p||0)>=0.1)bits.push('heaviest later: '+worst.p.toFixed(2)+'" at '+
+    worst.t.toLocaleTimeString([],{hour:'numeric'}));
+  $('precipnote').textContent=bits.join(' · ');
+}
+
 /* ---------- map ---------- */
 let map,radarLayers=[],frames=[],frameIdx=0,playing=true,playTimer=null,markerLayer,arcLayer;
 let baseOSM,baseChart,chartErrs=0,baseMode='map';
@@ -1358,12 +1563,20 @@ async function loadSnapshot(){
 }
 async function liveForecast(){
   const u='https://api.open-meteo.com/v1/forecast?latitude='+CFG.lat+'&longitude='+CFG.lon+
-    '&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m&current=wind_speed_10m,'+
-    'wind_gusts_10m,wind_direction_10m&wind_speed_unit=kn&forecast_days=3&past_hours=3&timezone=auto';
+    '&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,'+
+    'precipitation_probability,snowfall,weather_code,temperature_2m,apparent_temperature'+
+    '&current=wind_speed_10m,wind_gusts_10m,wind_direction_10m,temperature_2m,'+
+    'apparent_temperature,relative_humidity_2m,weather_code,is_day'+
+    '&wind_speed_unit=kn&temperature_unit=fahrenheit&precipitation_unit=inch'+
+    '&forecast_days=3&past_hours=3&timezone=auto';
   const r=await fetch(u);if(!r.ok)throw new Error('HTTP '+r.status);
   const j=await r.json();
-  HOURS=j.hourly.time.map((t,i)=>({t:new Date(t),s:j.hourly.wind_speed_10m[i],
-    g:j.hourly.wind_gusts_10m[i],d:j.hourly.wind_direction_10m[i]}));
+  const H=j.hourly;
+  HOURS=H.time.map((t,i)=>({t:new Date(t),s:H.wind_speed_10m[i],g:H.wind_gusts_10m[i],
+    d:H.wind_direction_10m[i],p:H.precipitation[i],pp:H.precipitation_probability[i],
+    sn:H.snowfall[i],wc:H.weather_code[i],tc:H.temperature_2m[i],
+    fl:H.apparent_temperature[i]}));
+  if(j.current&&SNAP)SNAP.current_model=j.current;
   setFeed('fc',true,'Forecast');
   return j.current;
 }
@@ -1555,6 +1768,8 @@ function render(){
   drawLoad(g,HOURS);
   drawWater();
   drawSun();
+  drawConditions();
+  drawPrecip();
   $('locname').textContent=CFG.nm;
   $('updated').textContent='Updated '+hhmm(now)+' · auto-refresh 5 min';
   drawMarkers();
@@ -1570,7 +1785,8 @@ async function refresh(){
   const snap=await loadSnapshot().catch(()=>{setFeed('snap',false,'Collector ✕');return null;});
   const cur=await liveForecast().catch(()=>{setFeed('fc',false,'Forecast ✕');return null;});
   if(!HOURS.length&&snap&&snap.forecast)
-    HOURS=snap.forecast.map(h=>({t:new Date(h.t),s:h.s,g:h.g,d:h.d}));
+    HOURS=snap.forecast.map(h=>({t:new Date(h.t),s:h.s,g:h.g,d:h.d,p:h.p,pp:h.pp,
+      sn:h.sn,wc:h.wc,tc:h.tc,fl:h.fl}));
 
   // best current source first: on-water buoy, then land obs, then cache, then model
   // Source ladder, best first. Every rung must be able to stand alone: the
