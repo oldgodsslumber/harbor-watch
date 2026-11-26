@@ -53,15 +53,31 @@ ranges touch: the method reproduces ABYC's published 50 ft @ 60 kt figure
 Lashed to dolphins is the important detail — the vessel cannot weathervane, so
 a beam-on wind stays beam-on, and beam-on load is about five times end-on.
 
-Thresholds are derived from the line spec rather than from generic small-craft
-numbers, and move when you change it in Settings. The default is deliberately
-the cautious end, because the line spec is unknown and the plausible range is
-wide: a worn 1" three-strand line is estimated to part near 38 kt, a sound 1.5"
-double braid near 68 kt. **That range straddles an ordinary winter gale here**,
-which is why measuring a line matters more than any refinement to the model.
+The mooring is a mixed set, so the model takes an inventory rather than one
+diameter: `1x3, 1x1.25, 7x1` (add `db` for double braid). Nylon lines of similar
+length share load roughly in proportion to axial stiffness, which goes as d², and
+strength also goes as d² — so a well-set mixed set sits at about the same
+utilisation on every line, and the real spread comes from unequal lengths and
+angles rather than from size.
 
-None of this is a survey. Chafe at the dolphins, not tensile failure, is the
-usual way mooring lines actually part.
+**The bow hawser is left out of the beam-on figure by default.** A 3" line on the
+bow resists fore-and-aft superbly and athwartships poorly, and counting its
+stiffness share abeam would flatter the result badly — it moves estimated failure
+from 65 kt to 93 kt.
+
+### Duration, not the gust
+
+A gust lasts seconds and rarely parts anything; hours at high load do. Published
+data for wet nylon: creep is the dominant fatigue mechanism above ~30% of
+breaking strength, below which life is long and abrasion-limited, and a line can
+fail in under 5 hours held at 80%. For cyclic loading the literature treats the
+peak as if held continuously, which is the assumption used here. `hoursToFailure`
+is a log-linear fit anchored at those two published points, and `cumulativeDamage`
+applies Miner's rule across the forecast, so the page can say what a whole blow
+costs rather than only how hard the worst gust pulls.
+
+None of this is a survey. Chafe where the lines bear on the dolphins, not tensile
+failure, is the usual way mooring lines actually part.
 
 ## Data retention
 
@@ -109,7 +125,7 @@ Site-level defaults (buoy list, zones, history length) are at the top of
     node test/parser.test.mjs    # 11 — NDBC parsing against a real captured file
     node test/sun.test.mjs       #  7 — sun times vs NWS published values
     node test/archive.test.mjs   #  9 — day flushing, rollup, no-rewrite guarantee
-    node test/rig.test.mjs       # 11 — mooring load model, validated against ABYC
+    node test/rig.test.mjs       # 15 — mooring load model, validated against ABYC
 
 The parser assertion that matters: `WVHT` is `MM` on most rows, so it scans down
 per-field for the most recent real value instead of trusting the newest row.

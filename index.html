@@ -68,7 +68,7 @@ body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-i
 .wrap{max-width:none;margin:0;padding:14px clamp(14px,1.6vw,34px) 44px}
 /* Prose should not stretch to 200 characters just because the monitor is wide;
    only the data surfaces benefit from the extra width. */
-.hint,.subline,.alert p,.daylight,.exposed{max-width:104ch}
+.hint,.subline,.daylight,.exposed,.mbody{max-width:78ch}
 header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:12px}
 h1{font-size:19px;margin:0;font-weight:700;letter-spacing:.2px}
 .sub{font-size:13px;color:var(--tx2)}
@@ -80,22 +80,56 @@ h1{font-size:19px;margin:0;font-weight:700;letter-spacing:.2px}
 .feed.warn{color:var(--watch);border-color:#5c4a23}
 .gear{margin-left:8px;background:var(--card);border:1px solid var(--line);color:var(--tx2);
   border-radius:10px;padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit}
-.alert{border-radius:14px;padding:14px 16px;margin-bottom:12px;border:1px solid;
-  background:#2a1116;border-color:#7a2230;display:none}
-.alert.show{display:block}
-.alert h2{margin:0 0 6px;font-size:16px;color:#ff8a95;display:flex;align-items:center;gap:8px}
-.alert .when{font-size:13px;color:#ffb3bb;margin-bottom:8px}
-.alert p{margin:0;font-size:13.5px;line-height:1.5;color:#e6c8cd;white-space:pre-wrap}
+/* condition roll-up — the first thing on the page */
+.statusbar{display:grid;grid-template-columns:auto 1fr auto;gap:18px;align-items:center;
+  border-radius:16px;padding:16px 20px;margin-bottom:12px;
+  border:1px solid var(--line);background:var(--card);transition:background .4s,border-color .4s}
+@media(max-width:900px){.statusbar{grid-template-columns:1fr;gap:10px}}
+.stlevel{display:flex;align-items:center;gap:11px;font-size:23px;font-weight:800;
+  letter-spacing:1.2px;white-space:nowrap}
+.stdot{width:15px;height:15px;border-radius:50%;background:currentColor;flex:none;
+  box-shadow:0 0 0 5px color-mix(in srgb,currentColor 22%,transparent)}
+.stmain{font-size:16px;font-weight:700;line-height:1.35}
+.stwhy{font-size:13px;color:var(--tx2);margin-top:3px;line-height:1.45}
+.stfactors{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:360px}
+@media(max-width:900px){.stfactors{justify-content:flex-start;max-width:none}}
+.stfactors span{font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;
+  background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--tx2);white-space:nowrap}
+.stfactors span.hot{border-color:currentColor}
+.statusbar.l0{background:linear-gradient(90deg,rgba(77,163,255,.10),transparent 60%);border-color:#2a4a6b}
+.statusbar.l1{background:linear-gradient(90deg,rgba(255,224,102,.10),transparent 60%);border-color:#6b5a1f}
+.statusbar.l2{background:linear-gradient(90deg,rgba(251,146,60,.12),transparent 60%);border-color:#7a4a22}
+.statusbar.l3{background:linear-gradient(90deg,rgba(239,68,68,.14),transparent 60%);border-color:#7a2230}
+/* NWS inbox — present but not shouting */
+.inboxcard{padding-bottom:12px}
+.inbox{display:flex;flex-direction:column}
+.msg{border-top:1px solid var(--line)}
+.msg:first-child{border-top:none}
+.msg summary{cursor:pointer;list-style:none;padding:9px 0;display:grid;
+  grid-template-columns:auto 1fr auto;gap:12px;align-items:baseline}
+.msg summary::-webkit-details-marker{display:none}
+.msg summary:hover .mev{text-decoration:underline}
+.mev{font-size:13.5px;font-weight:700;white-space:nowrap}
+.marea{font-size:12px;color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mwhen{font-size:11.5px;color:var(--tx3);white-space:nowrap;font-variant-numeric:tabular-nums}
+.mbody{font-size:13px;line-height:1.5;color:var(--tx2);padding:0 0 11px;white-space:pre-wrap;
+  max-width:104ch}
+.inboxempty{font-size:13px;color:var(--tx3);padding:6px 0}
+.standby{display:none}
+.standby.show{display:block;margin-top:7px;font-size:12.5px;line-height:1.45;color:#ffe9a8}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
 .card h3{margin:0 0 12px;font-size:12px;letter-spacing:1.1px;text-transform:uppercase;
   color:var(--tx3);font-weight:700;display:flex;align-items:center;gap:8px}
 .card h3 .rt{margin-left:auto;font-weight:600;letter-spacing:0;text-transform:none;font-size:11px}
 .mb{margin-bottom:12px}
-.grid3{display:grid;grid-template-columns:1.25fr .9fr 1fr;gap:12px;margin-bottom:12px}
-@media(max-width:1100px){.grid3{grid-template-columns:1fr 1fr}}
-@media(max-width:720px){.grid3{grid-template-columns:1fr}}
-.grid2{display:grid;grid-template-columns:320px 1fr;gap:12px;margin-bottom:12px}
-@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+/* One board. Extra screen width buys extra COLUMNS, not wider widgets — a card
+   stretched to 2000 px is unreadable no matter how much data is in it. */
+.board{display:grid;gap:12px;align-items:start;
+  grid-template-columns:repeat(auto-fill,minmax(330px,1fr))}
+.board>.card{min-width:0}
+.sp2,.sp3{grid-column:auto}
+@media(min-width:820px){.sp2{grid-column:span 2}.sp3{grid-column:span 2}}
+@media(min-width:1240px){.sp3{grid-column:span 3}}
 svg{display:block;overflow:visible}
 .svgnum{font-variant-numeric:tabular-nums;font-weight:800}
 .svglab{font-size:10.5px;letter-spacing:.9px;font-weight:700;text-transform:uppercase}
@@ -113,8 +147,8 @@ svg{display:block;overflow:visible}
   font-variant-numeric:tabular-nums}
 .lthero small{display:block;font-size:12.5px;font-weight:600;color:var(--tx3);
   letter-spacing:.3px;margin-top:3px}
-.ltrow2{display:grid;grid-template-columns:140px 1fr;gap:14px;align-items:center;
-  padding:9px 0;border-top:1px solid var(--line)}
+.ltrow2{display:grid;grid-template-columns:132px 1fr;gap:12px;align-items:center;
+  padding:8px 0;border-top:1px solid var(--line)}
 .ltrow2.on .ltwhen b{color:var(--crit)}
 .ltwhen .dim{color:var(--tx3)}
 .ltchip{font-size:11.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;
@@ -130,11 +164,9 @@ svg{display:block;overflow:visible}
   font-variant-numeric:tabular-nums;line-height:1.1}
 .bigline small{font-size:13px;font-weight:600;color:var(--tx3)}
 .subline{font-size:12.5px;color:var(--tx2);margin-top:6px;line-height:1.45}
-.grid2b{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media(max-width:820px){.grid2b{grid-template-columns:1fr}}
-.loadwrap{display:grid;grid-template-columns:150px minmax(220px,1fr) minmax(200px,1.1fr);
-  gap:20px;align-items:center}
-@media(max-width:860px){.loadwrap{grid-template-columns:1fr;gap:10px}}
+.loadwrap{display:grid;grid-template-columns:132px 1fr;gap:16px;align-items:center}
+.loadwrap .subline{grid-column:1/-1;margin-top:0}
+@media(max-width:560px){.loadwrap{grid-template-columns:1fr;gap:10px}}
 .loadbig{display:flex;align-items:baseline;gap:8px;font-size:42px;font-weight:800;
   font-variant-numeric:tabular-nums;line-height:1}
 .loadbig small{font-size:12px;font-weight:600;color:var(--tx3);letter-spacing:.3px}
@@ -191,14 +223,6 @@ svg{display:block;overflow:visible}
   font-size:13.5px;line-height:1.45;background:#2a2411;border:1px solid #6b5a1f;
   color:#ffe9a8}
 .sttable{width:100%;overflow-x:auto}
-@media(min-width:1700px){
-  .grid3{grid-template-columns:1.2fr .95fr 1fr}
-  .precipbars{height:158px}
-  .condtemp{font-size:54px}
-  .bigline{font-size:40px}
-  #ltstrip{height:150px}
-  .tl{height:230px}
-}
 .sttable table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
 .sttable th{font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--tx3);
   font-weight:700;text-align:right;padding:0 0 7px;white-space:nowrap}
@@ -218,7 +242,7 @@ svg{display:block;overflow:visible}
 .alertmore span{font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:999px;
   background:rgba(255,255,255,.06);border:1px solid #7a2230;color:#ffb3bb}
 .ltstripwrap{margin-top:14px}
-#ltstrip{width:100%;height:132px}
+#ltstrip{width:100%;height:126px}
 .leadbox{background:var(--card2);border-radius:12px;padding:10px 13px;border:1px solid var(--line)}
 .leadbox .lab{font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--tx3);font-weight:700;margin-bottom:4px}
 .leadbox .val{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums}
@@ -233,10 +257,8 @@ svg{display:block;overflow:visible}
 .tf .l{font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--tx3);font-weight:700}
 .tf .v{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px}
 .tf .n{font-size:10.5px;color:var(--tx3)}
-#map{height:430px;border-radius:12px;background:#0d141c;z-index:0}
-@media(min-width:1700px){#map{height:520px}}
-@media(min-width:2300px){#map{height:600px}}
-@media(max-width:900px){#map{height:330px}}
+#map{height:360px;border-radius:12px;background:#0d141c;z-index:0}
+
 .leaflet-container{font-family:inherit}
 /* Dark-mode the basemap WITHOUT touching radar, markers or popups: the filter
    is scoped to this tile layer's own container via its className. */
@@ -267,7 +289,7 @@ svg{display:block;overflow:visible}
 .buoy .bi .v{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.15}
 .buoy .bi .u{font-size:11.5px;color:var(--tx3)}
 .buoy .age{font-size:11px;color:var(--tx3);margin-top:9px}
-.tl{display:flex;align-items:flex-end;gap:2px;height:190px;position:relative}
+.tl{display:flex;align-items:flex-end;gap:2px;height:170px;position:relative}
 .bar{flex:1;min-width:0;border-radius:4px 4px 0 0;background:var(--calm)}
 .bar.watch{background:var(--watch)}.bar.concern{background:var(--concern)}.bar.crit{background:var(--crit)}
 .expribbon{display:flex;gap:2px;height:6px;margin-top:4px}
@@ -331,13 +353,20 @@ footer a{color:#6c8ead}
     <button class="gear" id="gearbtn">Settings</button>
   </header>
 
-  <div class="alert" id="alertbox">
-    <h2><span>⚠︎</span><span id="alertev"></span></h2>
-    <div class="when" id="alertwhen"></div>
-    <p id="alertdesc"></p>
-    <div class="alertmore" id="alertmore"></div>
+  <div class="statusbar" id="statusbar">
+    <div class="stlevel"><span class="stdot"></span><span id="stword">—</span></div>
+    <div class="stbody">
+      <div class="stmain" id="stmain">Waiting for data…</div>
+      <div class="stwhy" id="stwhy"></div>
+      <div class="standby" id="standby"></div>
+    </div>
+    <div class="stfactors" id="stfactors"></div>
   </div>
-  <div class="standby" id="standby"></div>
+
+  <div class="card mb inboxcard">
+    <h3>From the National Weather Service <span class="rt" id="inboxrt"></span></h3>
+    <div class="inbox" id="inbox"></div>
+  </div>
 
   <div class="panel" id="panel">
     <div class="frow">
@@ -357,10 +386,12 @@ footer a{color:#6c8ead}
       <button class="btn ghost" id="testsound">Test alarm</button>
     </div>
     <div class="frow" style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
-      <div class="fld"><label>Line dia (in)</label><input id="rdia" type="number" step="0.125" inputmode="decimal"></div>
-      <div class="fld"><label>Construction</label>
-        <select id="rcon"><option value="3strand">3-strand</option>
-          <option value="doublebraid">double braid</option></select></div>
+      <div class="fld" style="flex:1 1 220px"><label>Lines (count×inches)</label>
+        <input id="rlineset" type="text" style="width:100%;min-width:200px"></div>
+      <div class="fld"><label>Bow line abeam</label>
+        <select id="rbow"><option value="0">doesn't help</option>
+          <option value="1">counts</option></select></div>
+      <div class="fld"><label>Displacement (t)</label><input id="rdisp" type="number" inputmode="numeric"></div>
       <div class="fld"><label>Condition</label>
         <select id="rcond"><option value="new">new</option><option value="good">good</option>
           <option value="aged">aged</option><option value="unknown">unknown</option>
@@ -386,8 +417,8 @@ footer a{color:#6c8ead}
   </div>
 
   <!-- wind speed · wind direction · lead time -->
-  <div class="grid3">
-    <div class="card">
+    <div class="board">
+  <div class="card">
       <h3>Wind speed <span class="rt" id="nowsrc"></span></h3>
       <div class="gaugewrap">
         <svg id="gauge" viewBox="0 0 260 186" style="width:100%;max-width:340px" role="img"
@@ -395,8 +426,7 @@ footer a{color:#6c8ead}
         <span class="statechip" id="chip"><span class="dot"></span><span id="chiptx">—</span></span>
       </div>
     </div>
-
-    <div class="card">
+  <div class="card">
       <h3>Wind direction</h3>
       <div class="gaugewrap">
         <svg id="compass" viewBox="0 0 200 200" style="width:100%;max-width:250px" role="img"
@@ -404,8 +434,7 @@ footer a{color:#6c8ead}
       </div>
       <div class="exposed" id="expnow"></div>
     </div>
-
-    <div class="card">
+  <div class="card">
       <h3>Tide now <span class="rt" id="tidedir"></span></h3>
       <svg id="tidelevel" viewBox="0 0 200 244" style="width:100%;max-width:230px;margin:0 auto"
            role="img" aria-labelledby="tllab"><title id="tllab">Current water level</title></svg>
@@ -414,11 +443,7 @@ footer a{color:#6c8ead}
         <div class="tf"><div class="l">Surge</div><div class="v" id="wls">—</div><div class="n">vs prediction</div></div>
       </div>
     </div>
-  </div>
-
-
-  <div class="grid2b mb">
-    <div class="card">
+  <div class="card">
       <h3>Current conditions <span class="rt" id="condsrc"></span></h3>
       <div class="condtop">
         <svg id="condglyph" width="60" height="56" role="img" aria-label="Sky"></svg>
@@ -430,16 +455,13 @@ footer a{color:#6c8ead}
       </div>
       <div class="condgrid" id="condgrid"></div>
     </div>
-    <div class="card">
+  <div class="card">
       <h3>Precipitation — next 4 hours
         <span class="rt">total <b id="preciptotal">—</b></span></h3>
       <div class="precipbars" id="precipbars"></div>
       <div class="subline" id="precipnote"></div>
     </div>
-  </div>
-
-  <!-- when the alarm could trip -->
-  <div class="card mb">
+  <div class="card sp2">
     <h3>When the alarm could trip <span class="rt" id="alarmrt"></span></h3>
     <div class="lthero" id="lthero">—</div>
     <div class="daylight" id="daylight"></div>
@@ -454,8 +476,7 @@ footer a{color:#6c8ead}
       forecast gust sits at or above that level — so a long block is a long blow, not a single spike.
       Peak on record is the worst gust the collector has actually measured in the last 7 days.</div>
   </div>
-
-  <div class="card mb">
+  <div class="card sp2">
     <h3>Load on the lines <span class="rt" id="loadrt"></span></h3>
     <div class="loadwrap">
       <div class="loadbig"><span id="loadx">—</span><small>peak vs now</small></div>
@@ -469,11 +490,28 @@ footer a{color:#6c8ead}
     <div class="linegrid" id="linegrid"></div>
     <div class="capbar" id="capbar"></div>
     <div class="subline" id="capnote"></div>
+    <div class="linegrid" id="dosegrid"></div>
+    <div class="capbar" id="dosebar" style="margin-top:6px"></div>
+    <div class="subline" id="dosenote"></div>
     <div class="rigwarn" id="rigwarn"></div>
   </div>
-
-  <div class="mb">
-    <div class="card">
+  <div class="card">
+      <h3>Barometer <span class="rt" id="barort">NDBC</span></h3>
+      <div class="bigline"><span id="barova">—</span><small>hPa</small></div>
+      <div class="subline" id="barotd">—</div>
+      <svg id="baro" style="width:100%;height:70px" role="img" aria-label="Pressure, last 30 hours"></svg>
+    </div>
+  <div class="card">
+      <h3>Sun <span class="rt" id="sunrt"></span></h3>
+      <svg id="sunarc" style="width:100%;height:142px" role="img"
+           aria-label="Sun position, sunrise and sunset"></svg>
+    </div>
+  <div class="card">
+      <h3>Water temperature</h3>
+      <div class="bigline"><span id="wtemp">—</span></div>
+      <div class="subline" id="wnote"></div>
+    </div>
+  <div class="card sp2">
       <h3>Tide — next hours <span class="rt" id="tideloc">Boston 8443970</span></h3>
       <svg id="tidecurve" viewBox="0 0 680 230" preserveAspectRatio="none"
            style="width:100%;height:230px" role="img" aria-labelledby="tclab">
@@ -482,9 +520,7 @@ footer a{color:#6c8ead}
         now; the hollow marker is the actual observed level, so the gap between it and the curve is the
         surge. A positive surge on a high tide is what loads mooring gear.</div>
     </div>
-  </div>
-
-  <div class="card mb">
+  <div class="card sp2">
     <h3>Radar &amp; live wind <span class="rt" id="radarts"></span></h3>
     <div id="map"></div>
     <div class="mapfallback" id="mapfallback">
@@ -501,34 +537,12 @@ footer a{color:#6c8ead}
       <span class="bmnote" id="bmnote"></span>
     </div>
   </div>
-
-  <div class="card mb">
+  <div class="card sp2">
     <h3>On-water buoys <span class="rt">NDBC — via scheduled collector</span></h3>
     <div class="buoygrid" id="buoys"><div class="buoy"><div class="bn">Waiting for first collector run…</div>
       <div class="bid">Run the “Collect harbor data” workflow to seed <code>data/latest.json</code></div></div></div>
   </div>
-
-  <div class="grid3 mb">
-    <div class="card">
-      <h3>Barometer <span class="rt" id="barort">NDBC</span></h3>
-      <div class="bigline"><span id="barova">—</span><small>hPa</small></div>
-      <div class="subline" id="barotd">—</div>
-      <svg id="baro" style="width:100%;height:70px" role="img" aria-label="Pressure, last 30 hours"></svg>
-    </div>
-    <div class="card">
-      <h3>Sun <span class="rt" id="sunrt"></span></h3>
-      <svg id="sunarc" style="width:100%;height:142px" role="img"
-           aria-label="Sun position, sunrise and sunset"></svg>
-    </div>
-    <div class="card">
-      <h3>Water temperature</h3>
-      <div class="bigline"><span id="wtemp">—</span></div>
-      <div class="subline" id="wnote"></div>
-    </div>
-  </div>
-
-
-  <div class="card mb">
+  <div class="card sp3">
     <h3>All stations <span class="rt" id="stationsrt">monitoring only — the alarm uses the primaries</span></h3>
     <div class="sttable" id="stations"></div>
     <div class="hint">Sorted by distance from the mooring. <b>Primary</b> marks the feeds the
@@ -536,8 +550,7 @@ footer a{color:#6c8ead}
       the point — an airport anemometer and a waterside one in the same breeze routinely differ
       by several knots, and none of these is Lynn Harbor itself.</div>
   </div>
-
-  <div class="card mb">
+  <div class="card sp3">
     <h3>Gust forecast — next 48 hours</h3>
     <div class="tlwrap"><div class="tlnight" id="tlnight"></div><div class="tl" id="tl"></div></div>
     <div class="expribbon" id="expribbon" title="Hours with wind from the exposed arc"></div>
@@ -550,6 +563,7 @@ footer a{color:#6c8ead}
       <span><i style="background:var(--watch);height:5px;border-radius:2px"></i>Ribbon: wind from the exposed arc</span>
       <span><i style="background:rgba(120,160,210,.22);border:1px solid #2b3a4d"></i>Overnight band</span>
     </div>
+  </div>
   </div>
 
   <footer>
@@ -636,25 +650,80 @@ function windLoadLb(V_kt, areaFt2, Cd = 1.2) {
 // New breaking strengths, lb. 1" figures are published (New England Ropes /
 // typical catalogue); larger sizes scale with d^2, which slightly UNDER-predicts
 // the published 1-1/4" three-strand (35.3k vs 37.5k), so it errs safe.
-const BASE_1IN = { '3strand': 22600, 'doublebraid': 32750 };
-function lineBreakLb(diaIn, construction = '3strand') {
-  const base = BASE_1IN[construction] ?? BASE_1IN['3strand'];
-  return base * Math.pow(diaIn, 2);
-}
 
 // Condition derates. A line's history is usually unknown, and nylon fatigues:
 // a single winter gale can cycle a dockline thousands of times above its
 // working load, so an old line is not a new line.
-const CONDITION = { new: 1.0, good: 0.85, aged: 0.65, unknown: 0.65, poor: 0.45 };
+// Deliberately pessimistic where the history is unknown. Nylon loses strength to
+// UV, abrasion and cyclic fatigue, and an in-service mooring line that has sat
+// through a few winters is not a new line. `unknown` is treated as worse than
+// `aged` precisely because nobody has looked.
+const CONDITION = { new: 1.0, good: 0.80, aged: 0.60, unknown: 0.55, poor: 0.40 };
 
 const RIG_DEFAULTS = {
   loa: 100, windage_h: 16, beam: 28, exposure: 'beam',
-  dia: 1.0, construction: '3strand', condition: 'unknown',
-  lines: 4, worst_share: 0.5,   // the hardest-working line, not 1/n
-  gust: 1.4,                    // gust + yaw against a fixed structure
-  snatch: 2.0,                  // surge shock on a short, stiff lead
-  splice: 0.9                   // eye splice costs ~10%
+  displacement_tons: 70,        // recorded for context; wind load is area-driven
+  bow_line_helps_abeam: false,  // see linesetCapacity — a bow hawser resists
+                                // fore-and-aft far better than athwartships
+  // A real mooring is a mixed set, not one diameter. "1x3, 1x1.25, 7x1" means
+  // one 3", one 1.25" and seven 1" lines.
+  lineset: [{ n: 1, dia: 3, con: '3strand' },
+            { n: 1, dia: 1.25, con: '3strand' },
+            { n: 7, dia: 1, con: '3strand' }],
+  condition: 'good',
+  unevenness: 1.8,              // worst line vs its fair share (length/angle spread)
+  gust: 1.4, snatch: 2.0, splice: 0.9
 };
+
+function parseLineset(str) {
+  const out = [];
+  for (const part of String(str || '').split(',')) {
+    const m = part.trim().match(/^(\d+)\s*[x×]\s*([\d.]+)\s*(db|doublebraid)?$/i);
+    if (!m) continue;
+    const n = parseInt(m[1], 10), dia = parseFloat(m[2]);
+    if (!(n > 0) || !(dia > 0)) continue;
+    out.push({ n, dia, con: m[3] ? 'doublebraid' : '3strand' });
+  }
+  return out;
+}
+const linesetToString = ls => (ls || [])
+  .map(l => l.n + 'x' + l.dia + (l.con === 'doublebraid' ? 'db' : '')).join(', ');
+
+// Nylon lines of similar length share load roughly in proportion to axial
+// stiffness, which goes as the square of diameter. Strength also goes as d^2,
+// so a well-set mixed set sits at a similar utilisation on every line — the
+// real spread comes from unequal lengths and angles, which is `unevenness`.
+function linesetCapacity(rig, opts) {
+  const r = { ...RIG_DEFAULTS, ...(rig || {}) };
+  let ls = (r.lineset && r.lineset.length) ? r.lineset : RIG_DEFAULTS.lineset;
+  // Beam-on, a bow hawser pulls mostly fore-and-aft and contributes little
+  // athwartships. Unless told otherwise, leave the single largest line out of
+  // the beam-on calculation rather than assume it carries its stiffness share.
+  if ((opts && opts.beamOn) && !r.bow_line_helps_abeam && ls.length > 1) {
+    const big = ls.reduce((a, l) => (l.dia > a.dia ? l : a), ls[0]);
+    ls = ls.map(l => l === big ? { ...l, n: l.n - 1 } : l).filter(l => l.n > 0);
+    if (!ls.length) ls = [big];
+  }
+  let stiff = 0, breakTotal = 0, worst = null; const all = [];
+  for (const l of ls) {
+    const d2 = l.dia * l.dia;
+    const base = (l.con === 'doublebraid' ? 32750 : 22600);
+    stiff += l.n * d2;
+    breakTotal += l.n * base * d2;
+    all.push({ ...l, base, d2 });
+  }
+  // Governing line = highest utilisation, not smallest diameter. With share
+  // proportional to d^2 and strength also proportional to d^2 these come out
+  // nearly equal for one construction, which is the point: a mixed set of
+  // similar-length nylon lines loads every line to about the same fraction.
+  for (const l of all) {
+    const u = (l.d2 / stiff) / (l.base * l.d2);     // share per pound of strength
+    if (!worst || u > worst._u) worst = { ...l, _u: u };
+  }
+  const count = ls.reduce((a, l) => a + l.n, 0);
+  return { stiffness: stiff, break_total_new_lb: Math.round(breakTotal),
+           count, governing: worst, lines: ls };
+}
 
 function rigAnalysis(rig, V_kt) {
   const r = { ...RIG_DEFAULTS, ...(rig || {}) };
@@ -663,36 +732,85 @@ function rigAnalysis(rig, V_kt) {
   const Cd   = beamOn ? 1.2 : 0.9;
   const steady = windLoadLb(V_kt, area, Cd);
   const peak   = steady * r.gust * r.snatch;
-  const worst  = peak * r.worst_share;
-  const brkNew = lineBreakLb(r.dia, r.construction);
-  const brk    = brkNew * (CONDITION[r.condition] ?? 0.65) * r.splice;
+  const cap = linesetCapacity(r, { beamOn });
+  const derate = (CONDITION[r.condition] ?? 0.65) * r.splice;
+  // worst line: its stiffness share of the peak, times the unevenness factor
+  const g = cap.governing;
+  const share = cap.stiffness > 0 ? (g.d2 / cap.stiffness) * r.unevenness : 1;
+  const worstLoad = peak * Math.min(1, share);
+  const worstBreak = g.base * g.d2 * derate;
   return {
     area_ft2: Math.round(area), steady_lb: Math.round(steady),
-    peak_lb: Math.round(peak), worst_line_lb: Math.round(worst),
-    break_new_lb: Math.round(brkNew), break_derated_lb: Math.round(brk),
-    pct_of_break: brk > 0 ? +(worst / brk * 100).toFixed(1) : null
+    peak_lb: Math.round(peak), worst_line_lb: Math.round(worstLoad),
+    worst_line_dia: g.dia, line_count: cap.count,
+    break_new_lb: Math.round(g.base * g.d2),
+    break_derated_lb: Math.round(worstBreak),
+    fleet_break_new_lb: cap.break_total_new_lb,
+    worst_share: +Math.min(1, share).toFixed(3),
+    pct_of_break: worstBreak > 0 ? +(worstLoad / worstBreak * 100).toFixed(1) : null
   };
 }
 
-// Wind speed at which the worst-loaded line reaches `frac` of its derated break.
 function windAtFraction(rig, frac) {
   const r = { ...RIG_DEFAULTS, ...(rig || {}) };
   const beamOn = r.exposure !== 'bow';
   const area = beamOn ? r.loa * r.windage_h : r.beam * r.windage_h;
   const Cd   = beamOn ? 1.2 : 0.9;
-  const brk  = lineBreakLb(r.dia, r.construction) *
-               (CONDITION[r.condition] ?? 0.65) * r.splice;
-  const k = 0.5 * RHO * KT * KT * Cd * area * r.gust * r.snatch * r.worst_share;
+  const cap = linesetCapacity(r, { beamOn });
+  const g = cap.governing;
+  const derate = (CONDITION[r.condition] ?? 0.65) * r.splice;
+  const share = cap.stiffness > 0 ? Math.min(1, (g.d2 / cap.stiffness) * r.unevenness) : 1;
+  const brk = g.base * g.d2 * derate;
+  const k = 0.5 * RHO * KT * KT * Cd * area * r.gust * r.snatch * share;
   return k > 0 ? Math.sqrt(brk * frac / k) : null;
 }
 
+// Creep-rupture life. Published anchors: nylon can fail in under 5 h held at
+// 80% of breaking strength, and creep only dominates above about 30%, below
+// which life is long and limited by abrasion rather than tension. A log-linear
+// fit between those two points is crude but it is anchored at both ends, and it
+// is the part of the picture a single gust number cannot show.
+// For CYCLIC loading the literature treats the peak load as if held
+// continuously, which is why peak rather than mean is used here.
+function hoursToFailure(frac) {
+  if (!(frac > 0)) return Infinity;
+  if (frac <= 0.30) return Infinity;            // abrasion-limited, not creep
+  const logT = 4.0 - 6.6 * (frac - 0.30);       // 0.30 -> 1e4 h, 0.80 -> 5 h
+  return Math.pow(10, logT);
+}
+
+// Miner's rule over the forecast: each hour spends part of the line's life.
+// damage >= 1 means the model expects failure before the blow is over.
+function cumulativeDamage(rig, hourlyGusts) {
+  let dmg = 0, worstFrac = 0, hoursOver30 = 0;
+  for (const g of hourlyGusts) {
+    const a = rigAnalysis(rig, g);
+    const f = (a.pct_of_break || 0) / 100;
+    if (f > worstFrac) worstFrac = f;
+    if (f > 0.30) hoursOver30 += 1;
+    const life = hoursToFailure(f);
+    if (isFinite(life)) dmg += 1 / life;
+  }
+  return { damage: +dmg.toFixed(4), worst_frac: +worstFrac.toFixed(3),
+           hours_over_30pct: hoursOver30,
+           life_at_worst_h: hoursToFailure(worstFrac) };
+}
+
+
+// Wind speed at which the worst-loaded line reaches `frac` of its derated break.
+
 // Thresholds derived from the rig rather than from generic small-craft numbers.
-//   33% — nylon's fatigue region; repeated loading above this shortens life
-//   50% — serious; well past any published working load
-//   80% — approaching failure of the most-loaded line
+//   25% — published working loads for nylon run 1/10 to 1/4 of break
+//   40% — into the fatigue region; repeated loading here shortens line life fast
+//   65% — margin gone; a chafed or aged line can let go below this
+// The fractions are modest on purpose. The estimate carries real uncertainty in
+// windage area and line history, and the cost of being wrong is a 100 ton vessel
+// adrift in a gale, so the thresholds sit well inside the computed failure point.
 function thresholdsFor(rig) {
   const w = f => { const v = windAtFraction(rig, f); return v == null ? null : Math.round(v); };
-  return { watch: w(0.33), concern: w(0.50), critical: w(0.80),
+  // 30% is where creep fatigue starts to dominate for nylon, so that is the
+  // meaningful watch line rather than an arbitrary fraction.
+  return { watch: w(0.30), concern: w(0.45), critical: w(0.65),
            failure: w(1.00) };
 }
 'use strict';
@@ -700,8 +818,12 @@ const DEF={t1:22,t2:30,t3:40,talarm:30,arc1:20,arc2:120,lat:42.465,lon:-70.945,
   nm:'Lynn Harbor',stn:'KBOS',autoTh:1,
   // 100 ft, ~100 tons, 7.5 ft draft, lashed to dolphins. Line spec unknown —
   // that unknown is the dominant uncertainty, so it defaults to the cautious end.
-  rig:{loa:100,windage_h:16,beam:28,exposure:'beam',dia:1.0,
-       construction:'3strand',condition:'unknown',lines:4,worst_share:0.5,
+  // As reported: 100 ft, ~70 tons, 7.5 ft draft, lashed to dolphins, nine lines
+  // — one 3" bow hawser, one 1.25", seven 1" — all in good order.
+  rig:{loa:100,windage_h:16,beam:28,exposure:'beam',displacement_tons:70,
+       lineset:[{n:1,dia:3,con:'3strand'},{n:1,dia:1.25,con:'3strand'},
+                {n:7,dia:1,con:'3strand'}],
+       condition:'good',unevenness:1.8,bow_line_helps_abeam:false,
        gust:1.4,snatch:2.0,splice:0.9}};
 let CFG=Object.assign({},DEF);
 try{const s=localStorage.getItem('harborwatch');if(s){const p=JSON.parse(s);
@@ -755,7 +877,7 @@ function arcD(cx,cy,r,a0,a1){
     x1.toFixed(2)+','+y1.toFixed(2);
 }
 
-let HOURS=[],CURRENT=null,SNAP=null,TIDE=null;
+let HOURS=[],CURRENT=null,SNAP=null,TIDE=null,ALERTS=[];
 let alarmArmed=true,alarming=false,actx=null;
 
 /* ---------- alarm ---------- */
@@ -1352,6 +1474,32 @@ function drawLoad(nowGust,hours){
       'derated from '+Math.round(aNow.break_new_lb).toLocaleString()+' new')+
     cell('Fails at about',(th.failure||'—')+' kt','on the hardest-working line');
 
+  // Duration, not the gust, is what actually parts a line. Published creep data
+  // for nylon: life is long below 30% of break and collapses above it.
+  const fut48=hours.filter(h=>h.t>new Date()&&h.t<new Date(Date.now()+48*3600e3))
+    .map(h=>h.g).filter(g=>g!=null);
+  const dose=cumulativeDamage(rig,fut48);
+  const lifeTxt=h2=>!isFinite(h2)?'indefinite':h2>=48?Math.round(h2/24)+' days':
+    h2>=2?h2.toFixed(1)+' h':Math.round(h2*60)+' min';
+  $('dosegrid').innerHTML=
+    cell('Hours over 30%',dose.hours_over_30pct+' h','of the next 48 — below 30% a '+
+      'nylon line lasts indefinitely')+
+    cell('Life at the peak',lifeTxt(dose.life_at_worst_h),
+      'held continuously at '+Math.round(dose.worst_frac*100)+'% of break')+
+    cell('This blow costs',(dose.damage*100).toFixed(0)+'%',
+      'of the line\'s remaining creep life');
+  const dcol=dose.damage>=1?cssv('--crit'):dose.damage>=0.5?cssv('--concern'):
+    dose.damage>=0.1?cssv('--watch'):cssv('--calm');
+  $('dosebar').innerHTML='<div class="capfill" style="width:'+
+    (Math.min(1,dose.damage)*100).toFixed(1)+'%;background:'+dcol+'"></div>'+
+    '<div class="caplbl">'+(dose.damage>=1?'exceeds one line-life':
+      (dose.damage*100).toFixed(0)+'% of a line-life this event')+'</div>';
+  $('dosenote').textContent=dose.hours_over_30pct===0
+    ? 'Nothing in the next 48 hours loads a line into its fatigue region.'
+    : 'A gust is brief and rarely breaks anything; hours spent high do the damage. '+
+      'For cyclic loading the literature treats the peak as if it were held '+
+      'continuously, which is the assumption used here.';
+
   const pctCap=aPk?Math.min(140,aPk.pct_of_break):(aNow.pct_of_break||0);
   const col=pctCap>=80?cssv('--crit'):pctCap>=50?cssv('--concern'):
     pctCap>=33?cssv('--watch'):cssv('--calm');
@@ -1362,33 +1510,33 @@ function drawLoad(nowGust,hours){
     mark(33,'33%')+mark(50,'50%')+mark(80,'80%')+mark(100,'BREAK')+
     '<div class="caplbl">'+(aPk?Math.round(aPk.pct_of_break):Math.round(pctCap))+
     '% of breaking strength at peak</div>';
+  const capn=linesetCapacity(rig,{beamOn:(rig.exposure||'beam')!=='bow'});
   $('capnote').textContent=
-    'Assuming '+(rig.dia||1)+'" '+((rig.construction||'3strand')==='doublebraid'
-      ? 'double braid':'three-strand')+' nylon in '+(rig.condition||'unknown')+
+    capn.count+' lines counted, nylon in '+(rig.condition||'unknown')+
     ' condition, lying '+((rig.exposure||'beam')==='bow'?'bow or stern to the wind':
-      'beam-on to the wind')+', with the hardest-working line taking half the total. '+
+      'beam-on to the wind')+'. Governed by the '+capn.governing.dia+
+    '" line carrying '+Math.round((aNow.worst_share||0.2)*100)+'% of the total. '+
     'Watch '+th.watch+' kt · concern '+th.concern+' kt · critical '+th.critical+
     ' kt · estimated failure '+th.failure+' kt.';
   $('loadrt').textContent=aPk?Math.round(aPk.worst_line_lb).toLocaleString()+
     ' lb on the worst line at peak':'';
 
   // The uncertainty is the finding, so say it rather than hide it.
-  const weak=thresholdsFor({...rig,dia:1.0,construction:'3strand',condition:'aged'});
-  const strong=thresholdsFor({...rig,dia:1.5,construction:'doublebraid',condition:'aged'});
+  const weak=thresholdsFor({...rig,condition:'poor'});
+  const strong=thresholdsFor({...rig,condition:'new',bow_line_helps_abeam:true});
   const pk=peak?peak.g:null;
   let msg='';
   if((rig.condition||'unknown')==='unknown'){
     msg='The lines are unspecified, and that is the weak point in this estimate. '+
-      'A worn 1" three-strand line on this boat is estimated to fail near '+
-      weak.failure+' kt; a sound 1.5" double braid near '+strong.failure+' kt.'+
-      (pk?' Tonight\'s forecast peak is '+Math.round(pk)+' kt — inside that range.':'')+
-      ' Measure a line and set it in Settings and these numbers stop being a guess.';
+      'Set them in Settings and these numbers stop being a guess.';
   }else if(pk&&th.failure&&pk>=th.failure*0.8){
     msg='Forecast peak '+Math.round(pk)+' kt is within 20% of the estimated failure '+
       'wind for these lines ('+th.failure+' kt).';
   }else{
-    msg='Estimate only — a drag calculation, not a survey. Chafe at the dolphins, '+
-      'not tensile failure, is the usual way mooring lines actually part.';
+    msg='Estimate only — a drag calculation, not a survey. The bow hawser is left '+
+      'out of the beam-on figure because it pulls fore-and-aft; counting it would '+
+      'put failure nearer '+strong.failure+' kt. Chafe where the lines bear on the '+
+      'dolphins, not tensile failure, is the usual way mooring lines actually part.';
   }
   $('rigwarn').textContent=msg;
 }
@@ -1667,6 +1815,124 @@ function drawStations(){
     : 'monitoring only — the alarm uses the primaries';
 }
 
+/* ---------- condition roll-up ---------- */
+const LEVEL=['NORMAL','YELLOW','ORANGE','RED'];
+const WARNY=/Warning/i, ADVY=/Advisory|Watch|Statement/i;
+function computeStatus(gust,measured,hours,alerts,tide){
+  const f=[];                      // {lvl, label, hot}
+  const now=new Date();
+  const fut=hours.filter(h=>h.t>now);
+  let lvl=0;
+  const bump=(n,label)=>{f.push({lvl:n,label:label});if(n>lvl)lvl=n;};
+
+  if(gust!=null){
+    const t=tier(gust);
+    bump(t,Math.round(gust)+' kt '+(measured?'measured':'modelled'));
+  }else bump(1,'no wind reading');
+
+  const soon=fut.filter(h=>h.t-now<=3600e3);
+  if(soon.length){
+    const w=soon.reduce((a,b)=>b.g>a.g?b:a);
+    if(w.g>=CFG.t3)bump(2,'forecast '+Math.round(w.g)+' kt within the hour');
+    else if(w.g>=CFG.t2)bump(2,'forecast '+Math.round(w.g)+' kt within the hour');
+    else if(w.g>=CFG.t1)bump(1,'forecast '+Math.round(w.g)+' kt within the hour');
+  }
+  // line load at the forecast peak is the thing that actually breaks something
+  const peak=fut.filter(h=>h.t-now<48*3600e3)
+    .reduce((a,b)=>(!a||b.g>a.g)?b:a,null);
+  if(peak){
+    const a=rigAnalysis(CFG.rig,peak.g);
+    const p=a.pct_of_break;
+    if(p>=65)bump(3,'lines at '+Math.round(p)+'% of breaking strength at peak');
+    else if(p>=40)bump(2,'lines at '+Math.round(p)+'% at peak');
+    else if(p>=25)bump(1,'lines at '+Math.round(p)+'% at peak');
+  }
+  if(peak){
+    const d2=cumulativeDamage(CFG.rig,fut.filter(h=>h.t-now<48*3600e3)
+      .map(h=>h.g).filter(g=>g!=null));
+    if(d2.damage>=1)bump(3,'this blow exceeds one line-life');
+    else if(d2.damage>=0.5)bump(2,'blow costs '+Math.round(d2.damage*100)+'% of line life');
+    else if(d2.damage>=0.15)bump(1,'blow costs '+Math.round(d2.damage*100)+'% of line life');
+  }
+  (alerts||[]).forEach(a=>{
+    if(WARNY.test(a.event))bump(2,a.event);
+    else if(ADVY.test(a.event))bump(1,a.event);
+  });
+  if(tide&&tide.surge_ft!=null){
+    if(tide.surge_ft>=2)bump(2,'surge +'+tide.surge_ft.toFixed(1)+' ft');
+    else if(tide.surge_ft>=1)bump(1,'surge +'+tide.surge_ft.toFixed(1)+' ft');
+  }
+  const driver=f.filter(x=>x.lvl===lvl).map(x=>x.label);
+  return {lvl:lvl,factors:f,driver:driver};
+}
+function drawStatus(gust,measured,hours,alerts,tide){
+  const st=computeStatus(gust,measured,hours,alerts,tide);
+  const bar=$('statusbar');
+  bar.className='statusbar l'+st.lvl;
+  bar.style.color=cssv(TVAR[st.lvl]);
+  $('stword').textContent=LEVEL[st.lvl];
+  $('stword').style.color=cssv(TVAR[st.lvl]);
+  const MAIN=['Nothing out of the ordinary at the mooring.',
+    'Worth watching — conditions are building.',
+    'Serious. Lines are working and it is forecast to get worse.',
+    'Critical. Loads are at or near what the lines can take.'];
+  $('stmain').textContent=MAIN[st.lvl];
+  $('stwhy').textContent=st.driver.length?'Driven by: '+st.driver.join(' · '):'';
+  $('stfactors').innerHTML=st.factors
+    .sort((a,b)=>b.lvl-a.lvl).slice(0,5)
+    .map(x=>'<span class="'+(x.lvl===st.lvl?'hot':'')+'" style="color:'+
+      (x.lvl===st.lvl?cssv(TVAR[x.lvl]):'')+'">'+x.label+'</span>').join('');
+  return st;
+}
+
+// NWS products arrive as "* WHAT...", "* WHERE..." fields hard-wrapped at ~68
+// columns. WHERE and WHEN already appear in the card's title and date line, so
+// keep WHAT and IMPACTS, unwrap them, and drop the rest.
+function summarizeAlert(p){
+  const raw=(p.description||'').trim();
+  if(!raw)return '';
+  const grab=k=>{
+    const m=raw.match(new RegExp('\\*\\s*'+k+'\\.\\.\\.([\\s\\S]*?)(?=\\n\\s*\\*|$)','i'));
+    return m?m[1].replace(/\s+/g,' ').trim().replace(/\.$/,''):null;
+  };
+  const what=grab('WHAT'),imp=grab('IMPACTS');
+  const out=[];
+  if(what)out.push(what+'.');
+  if(imp)out.push(imp+'.');
+  if(!out.length){
+    const first=raw.split(/\n\s*\n/)[0].replace(/\s+/g,' ').trim();
+    return first.slice(0,320);
+  }
+  return out.join('\n\n');   // instruction is canned boilerplate; WHAT + IMPACTS carry the news
+}
+
+/* ---------- NWS inbox ---------- */
+function drawInbox(list){
+  const box=$('inbox');
+  if(!list||!list.length){
+    box.innerHTML='<div class="inboxempty">No active warnings or advisories '+
+      'for Boston Harbor, Massachusetts Bay or Eastern Essex.</div>';
+    $('inboxrt').textContent='all clear';return;}
+  const rank={'Hurricane Force Wind Warning':8,'Storm Warning':7,'Gale Warning':6,
+    'Coastal Flood Warning':6,'High Wind Warning':5,'Special Marine Warning':5,
+    'Coastal Flood Advisory':4,'Freezing Spray Advisory':4,'Small Craft Advisory':3};
+  const srt=list.slice().sort((a,b)=>(rank[b.event]||1)-(rank[a.event]||1));
+  const f=t=>t?new Date(t).toLocaleString([],{weekday:'short',hour:'numeric',
+    minute:'2-digit'}):'—';
+  box.innerHTML=srt.map((p,i)=>{
+    const warn=WARNY.test(p.event);
+    const body=summarizeAlert(p)||'No further detail supplied.';
+    return '<details class="msg"'+(i===0&&warn?' open':'')+'>'+
+      '<summary><span class="mev" style="color:'+
+        (warn?cssv('--crit'):cssv('--watch'))+'">'+p.event+'</span>'+
+      '<span class="marea">'+(p.area||'')+'</span>'+
+      '<span class="mwhen">'+f(p.onset)+' → '+f(p.ends)+'</span></summary>'+
+      '<div class="mbody">'+body.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div></details>';
+  }).join('');
+  const w=srt.filter(x=>WARNY.test(x.event)).length;
+  $('inboxrt').textContent=srt.length+' active'+(w?' · '+w+' warning'+(w>1?'s':''):'');
+}
+
 /* ---------- map ---------- */
 let map,radarLayers=[],frames=[],frameIdx=0,playing=true,playTimer=null,markerLayer,arcLayer;
 let baseOSM,baseChart,chartErrs=0,baseMode='map';
@@ -1904,44 +2170,17 @@ async function liveTide(){
 }
 
 /* ---------- render ---------- */
-// NWS products arrive as "* WHAT...", "* WHERE..." fields hard-wrapped at ~68
-// columns. WHERE and WHEN already appear in the card's title and date line, so
-// keep WHAT and IMPACTS, unwrap them, and drop the rest.
-function summarizeAlert(p){
-  const raw=(p.description||'').trim();
-  if(!raw)return '';
-  const grab=k=>{
-    const m=raw.match(new RegExp('\\*\\s*'+k+'\\.\\.\\.([\\s\\S]*?)(?=\\n\\s*\\*|$)','i'));
-    return m?m[1].replace(/\s+/g,' ').trim().replace(/\.$/,''):null;
-  };
-  const what=grab('WHAT'),imp=grab('IMPACTS');
-  const out=[];
-  if(what)out.push(what+'.');
-  if(imp)out.push(imp+'.');
-  if(!out.length){
-    const first=raw.split(/\n\s*\n/)[0].replace(/\s+/g,' ').trim();
-    return first.slice(0,320);
-  }
-  return out.join('\n\n');   // instruction is canned boilerplate; WHAT + IMPACTS carry the news
-}
 function renderAlerts(list){
-  const box=$('alertbox');
-  if(!list||!list.length){box.classList.remove('show');$('alertmore').innerHTML='';
-    setFeed('nws',true,'NWS clear');return;}
-  const p=list[0];
-  $('alertev').textContent=p.event+' — '+(p.area||p.areaDesc||'');
-  const f=t=>t?new Date(t).toLocaleString([],{weekday:'short',hour:'numeric',minute:'2-digit'}):'—';
-  $('alertwhen').textContent='In effect '+f(p.onset)+'  →  '+f(p.ends)+
-    (list.length>1?'   (+'+(list.length-1)+' more active)':'');
-  $('alertdesc').textContent=summarizeAlert(p);
-  // Freezing Spray rides along with November gales and Coastal Flood comes from
-  // the land zone; showing only the top-ranked one hid them entirely.
-  const more=list.slice(1);
-  $('alertmore').innerHTML=more.map(a=>'<span>'+a.event+
-    (a.area?' · '+a.area:'')+'</span>').join('');
-  box.classList.add('show');
-  setFeed('nws',true,'NWS '+p.event.replace(' Warning','').replace(' Advisory','')+
-    (more.length?' +'+more.length:''));
+  ALERTS=list||[];
+  drawInbox(ALERTS);
+  if(!ALERTS.length){setFeed('nws',true,'NWS clear');return;}
+  const rank={'Hurricane Force Wind Warning':8,'Storm Warning':7,'Gale Warning':6,
+    'Coastal Flood Warning':6,'High Wind Warning':5,'Special Marine Warning':5,
+    'Coastal Flood Advisory':4,'Freezing Spray Advisory':4,'Small Craft Advisory':3};
+  const top=ALERTS.slice().sort((a,b)=>(rank[b.event]||1)-(rank[a.event]||1))[0];
+  const more=ALERTS.length-1;
+  setFeed('nws',true,'NWS '+top.event.replace(' Warning','').replace(' Advisory','')+
+    (more?' +'+more:''));
 }
 function renderBuoys(){
   const bs=SNAP&&SNAP.buoys?Object.values(SNAP.buoys):[];
@@ -2046,6 +2285,7 @@ function render(){
   drawConditions();
   drawPrecip();
   drawStations();
+  drawStatus(g,!!(CURRENT&&CURRENT.m),HOURS,ALERTS,TIDE);
   $('locname').textContent=CFG.nm;
   $('updated').textContent='Updated '+hhmm(now)+' · auto-refresh 5 min';
   drawMarkers();
@@ -2166,11 +2406,16 @@ function fillForm(){
   ['t1','t2','t3','talarm','arc1','arc2','lat','lon','nm','stn']
     .forEach(k=>$(k).value=CFG[k]);
   const r=CFG.rig||{};
-  $('rdia').value=r.dia; $('rcon').value=r.construction; $('rcond').value=r.condition;
+  $('rlineset').value=linesetToString(r.lineset);
+  $('rbow').value=r.bow_line_helps_abeam?'1':'0';
+  $('rdisp').value=r.displacement_tons||'';
+  $('rcond').value=r.condition;
   $('rwh').value=r.windage_h; $('rloa').value=r.loa; $('rexp').value=r.exposure;
   $('rauto').value=CFG.autoTh?'1':'0';
   const th=thresholdsFor(r);
-  $('righint').innerHTML='<b>The lines are the unknown.</b> ABYC\'s load table stops at '+
+  const cap=linesetCapacity(r,{beamOn:(r.exposure||'beam')!=='bow'});
+  $('righint').innerHTML='<b>'+cap.count+' lines counted abeam, governed by the '+
+    cap.governing.dia+'" line.</b> ABYC\'s load table stops at '+
     '60 ft, so these come from a drag calculation for a '+r.loa+' ft hull with '+
     r.windage_h+' ft of profile, checked against the one ABYC figure it overlaps '+
     '(50 ft at 60 kt) to within 5%. With the current spec the hardest-working line '+
@@ -2186,8 +2431,10 @@ $('save').onclick=()=>{
   if($('stn').value.trim())CFG.stn=$('stn').value.trim().toUpperCase();
   CFG.rig=CFG.rig||{};
   const rn=(id,k)=>{const v=parseFloat($(id).value);if(isFinite(v)&&v>0)CFG.rig[k]=v;};
-  rn('rdia','dia'); rn('rwh','windage_h'); rn('rloa','loa');
-  CFG.rig.construction=$('rcon').value;
+  rn('rwh','windage_h'); rn('rloa','loa'); rn('rdisp','displacement_tons');
+  const ls=parseLineset($('rlineset').value);
+  if(ls.length)CFG.rig.lineset=ls;
+  CFG.rig.bow_line_helps_abeam=$('rbow').value==='1';
   CFG.rig.condition=$('rcond').value;
   CFG.rig.exposure=$('rexp').value;
   CFG.autoTh=$('rauto').value==='1'?1:0;
