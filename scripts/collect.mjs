@@ -1,7 +1,7 @@
 // Harbor Watch collector. Runs in GitHub Actions, writes data/latest.json.
 // Server-side so it can read sources the browser can't (NDBC sends no CORS
 // headers). Everything here is keyless and public.
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { summarize } from './ndbc.mjs';
 
 const OUT = 'data/latest.json';
@@ -17,7 +17,14 @@ const BUOYS = [
 const ZONES = 'ANZ230,ANZ251,MAZ007';
 const OBS_STATION = 'KBOS';
 const TIDE_STATION = '8443970';
-const HISTORY_DAYS = 7;
+// latest.json stays lean because it is rewritten and committed every 10 min.
+// Anything older lives in per-day archive files, which each change once a day,
+// plus a tiny all-time daily rollup.
+const HISTORY_DAYS = 3;
+const ARCHIVE_DIR  = 'data/archive';
+const DAILY_FILE   = 'data/daily.json';
+// Lead times probed each run so forecast-vs-observed can be checked later.
+const PROBE_LEADS  = [1, 3, 6, 12, 24];
 
 const errors = [];
 async function j(url, opts = {}) {
@@ -184,8 +191,114 @@ for (const [id, arr] of Object.entries(history)) {
   }
 }
 
+/* ---------- durable archive ----------
+   Cost discipline: latest.json is rewritten and committed every 10 minutes, so
+   its size is multiplied by 144 a day. Keeping 7 days of samples in it cost
+   ~104 KB a run, ~15 MB of blob churn a day. The archive therefore does NOT get
+   rewritten every run — a day's file is written once, after that day is over.
+   latest.json carries 3 days as slack so a few missed runs cannot lose samples
+   before the flush. Net effect is LESS writing than before, not more, because
+   the per-run file shrank. */
+const nowIso = new Date().toISOString();
+const dayKey = d => new Date(d).toISOString().slice(0, 10);
+const today  = dayKey(Date.now());
+const readJson = (p, fb) => { try { return JSON.parse(readFileSync(p, 'utf8')); }
+                              catch { return fb; } };
+mkdirSync(ARCHIVE_DIR, { recursive: true });
+
+// Today's low-rate extras ride along in latest.json and are flushed with the
+// day. Probes are sampled on the half hour, not every run, to keep this small.
+const carry = readJson(OUT, {}).today_log || { date: today, obs: [], tide: [], probes: [] };
+if (carry.date !== today) { carry.date = today; carry.obs = []; carry.tide = []; carry.probes = []; }
+const push = (arr, key, rec) => {
+  if (!rec[key]) return; const m = new Map(arr.map(x => [x.t, x]));
+  m.set(rec.t, rec); return [...m.values()].sort((a, b) => new Date(a.t) - new Date(b.t));
+};
+if (obs?.observed_at)
+  carry.obs = push(carry.obs, 't', { t: obs.observed_at, s: obs.sustained_kt,
+    g: obs.gust_kt, d: obs.dir_deg, temp: obs.temp_f }) || carry.obs;
+if (tide?.observed_at)
+  carry.tide = push(carry.tide, 't', { t: tide.observed_at, v: tide.observed_ft,
+    surge: tide.surge_ft }) || carry.tide;
+if (forecast?.hours?.length && new Date().getUTCMinutes() < 10) {
+  for (const lead of PROBE_LEADS) {
+    const target = new Date(Date.now() + lead * 3600e3);
+    let best = null, bd = Infinity;
+    for (const h of forecast.hours) {
+      const dd = Math.abs(new Date(h.t) - target);
+      if (dd < bd) { bd = dd; best = h; }
+    }
+    if (best && bd <= 36e5)
+      carry.probes.push({ issued: nowIso, lead,
+        target: new Date(best.t).toISOString(), g: best.g });
+  }
+}
+
+// Flush any finished day exactly once.
+const byDay = {};
+for (const [id, arr] of Object.entries(history))
+  for (const s of arr) { const k = dayKey(s.t);
+    ((byDay[k] ||= {})[id] ||= []).push(s); }
+const flushed = [];
+for (const [k, buoySamples] of Object.entries(byDay)) {
+  if (k === today) continue;                       // still accumulating
+  const path = ARCHIVE_DIR + '/' + k + '.json';
+  if (existsSync(path)) continue;                  // already written
+  // history is newest-first for the UI; an archive is read chronologically.
+  const asc = {};
+  for (const [id, arr] of Object.entries(buoySamples)) {
+    const m = new Map(arr.map(s => [s.t, s]));
+    asc[id] = [...m.values()].sort((a, b) => new Date(a.t) - new Date(b.t));
+  }
+  const rec = { date: k, buoys: asc,
+    obs: carry.date === k ? carry.obs : [],
+    tide: carry.date === k ? carry.tide : [],
+    probes: carry.date === k ? carry.probes : [],
+    alerts: [...new Set((alerts || []).map(a => a.event))] };
+  writeFileSync(path, JSON.stringify(rec));
+  flushed.push(k);
+}
+if (flushed.includes(carry.date)) { carry.obs = []; carry.tide = []; carry.probes = []; }
+
+// One small line per day, kept forever — the index worth reading back.
+const daily = readJson(DAILY_FILE, { days: [] });
+const dmap = new Map(daily.days.map(d => [d.date, d]));
+const summarise = (k, buoys, tideArr) => {
+  const gusts = [], waves = [], surges = [];
+  for (const arr of Object.values(buoys || {}))
+    for (const s of arr) { if (s.g != null) gusts.push(s.g); if (s.wv != null) waves.push(s.wv); }
+  for (const x of (tideArr || [])) if (x.surge != null) surges.push(x.surge);
+  const mx = v => v.length ? +Math.max(...v).toFixed(1) : null;
+  const mean = v => v.length ? +(v.reduce((p, q) => p + q, 0) / v.length).toFixed(1) : null;
+  return { date: k, max_gust_kt: mx(gusts), mean_gust_kt: mean(gusts),
+    max_wave_ft: mx(waves), max_surge_ft: mx(surges), samples: gusts.length };
+};
+for (const k of flushed)
+  dmap.set(k, Object.assign(summarise(k, readJson(ARCHIVE_DIR + '/' + k + '.json', {}).buoys, []),
+    { events: [...new Set((alerts || []).map(a => a.event))] }));
+if (byDay[today]) {
+  const prevToday = dmap.get(today) || {};
+  dmap.set(today, Object.assign(summarise(today, byDay[today], carry.tide),
+    { events: [...new Set(((prevToday.events) || []).concat(
+        (alerts || []).map(a => a.event)))] }));
+}
+daily.days = [...dmap.values()].sort((a, b) => a.date.localeCompare(b.date));
+daily.updated_at = nowIso;
+writeFileSync(DAILY_FILE, JSON.stringify(daily, null, 1));
+
+const allTime = daily.days.reduce((a, d) =>
+  (d.max_gust_kt != null && (!a || d.max_gust_kt > a.max_gust_kt)) ? d : a, null);
+const cutoff7 = dayKey(Date.now() - 7 * 864e5);
+const last7 = daily.days.filter(d => d.date >= cutoff7).reduce((a, d) =>
+  (d.max_gust_kt != null && (!a || d.max_gust_kt > a.max_gust_kt)) ? d : a, null);
+
 const out = {
-  generated_at: new Date().toISOString(),
+  generated_at: nowIso,
+  archive: { dir: ARCHIVE_DIR, days: daily.days.length,
+             first: daily.days[0]?.date || null, flushed_now: flushed },
+  today_log: carry,
+  peak_all_time: allTime ? { gust_kt: allTime.max_gust_kt, date: allTime.date } : null,
+  peak_7d_daily: last7 ? { gust_kt: last7.max_gust_kt, date: last7.date } : null,
   harbor: HARBOR,
   buoys, obs, alerts, tide,
   forecast: forecast ? forecast.hours : null,

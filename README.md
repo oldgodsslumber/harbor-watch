@@ -33,6 +33,26 @@ Caveat worth knowing: CO-OPS station 8443970 (Boston) serves water level but
 **not** the wind product — that endpoint returns an error. Live wind comes from
 KBOS instead.
 
+## Data retention
+
+`data/latest.json` is rewritten and committed every 10 minutes, so its size is
+multiplied by 144 a day. It therefore holds only 3 days of samples (~42 KB) and
+everything older is flushed to `data/archive/YYYY-MM-DD.json` — written **once**,
+after that day is over, never rewritten. `data/daily.json` keeps one small line
+per day forever: max and mean gust, max wave, max surge, sample count, and which
+warnings were in force.
+
+The three days in `latest.json` are deliberate slack: GitHub's scheduler drops
+runs, so the flush must be able to pick up a day late without losing samples.
+
+Net churn went **down**, from ~15 MB/day to ~6 MB/day, because the per-run file
+shrank by more than the archive adds.
+
+`today_log` inside `latest.json` carries the current day's observations, tide
+readings and forecast probes until the day is flushed. Probes record what the
+forecast said at +1/3/6/12/24 h, sampled on the half hour, so forecast-vs-observed
+can be checked after the fact — the thing no amount of live data can tell you.
+
 ## Setup
 
 1. Push this repo to GitHub.
@@ -58,6 +78,7 @@ Site-level defaults (buoy list, zones, history length) are at the top of
 
     node test/parser.test.mjs    # 11 — NDBC parsing against a real captured file
     node test/sun.test.mjs       #  7 — sun times vs NWS published values
+    node test/archive.test.mjs   #  9 — day flushing, rollup, no-rewrite guarantee
 
 The parser assertion that matters: `WVHT` is `MM` on most rows, so it scans down
 per-field for the most recent real value instead of trusting the newest row.

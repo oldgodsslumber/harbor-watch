@@ -166,6 +166,10 @@ svg{display:block;overflow:visible}
 .pfill{width:100%;border-radius:0 0 6px 6px;transition:height .8s cubic-bezier(.22,.61,.36,1)}
 .ppct{font-size:14px;font-weight:800;font-variant-numeric:tabular-nums}
 .phr{font-size:11px;color:var(--tx3);font-variant-numeric:tabular-nums}
+.standby{display:none}
+.standby.show{display:block;border-radius:12px;padding:11px 14px;margin-bottom:12px;
+  font-size:13.5px;line-height:1.45;background:#2a2411;border:1px solid #6b5a1f;
+  color:#ffe9a8}
 .alertlist{display:flex;flex-direction:column;gap:9px}
 .alertmore{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
 .alertmore span{font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:999px;
@@ -286,6 +290,7 @@ footer a{color:#6c8ead}
     <p id="alertdesc"></p>
     <div class="alertmore" id="alertmore"></div>
   </div>
+  <div class="standby" id="standby"></div>
 
   <div class="panel" id="panel">
     <div class="frow">
@@ -1774,11 +1779,33 @@ function render(){
   $('updated').textContent='Updated '+hhmm(now)+' · auto-refresh 5 min';
   drawMarkers();
 
-  const soon=fut.slice(0,2).some(h=>h.g>=CFG.talarm);
-  if(g!=null&&g>=CFG.talarm)
+  // The siren means "it is over the line right now", so only a MEASURED gust may
+  // sound it. Two ways it used to cry wolf:
+  //   - it looked two hourly entries ahead (up to ~2 h) while saying "within the
+  //     hour", so a forecast crossing at 6 PM rang the bell at 4:54 PM;
+  //   - once the source ladder could fall back to a forecast hour, a modelled
+  //     value landed in `g` and tripped the measured branch outright.
+  const measured=!!(CURRENT&&CURRENT.m);
+  const within=fut.filter(h=>h.t-now<=3600e3);
+  const imminent=within.some(h=>h.g>=CFG.talarm);
+  const sb=$('standby');
+  if(measured&&g!=null&&g>=CFG.talarm){
     startAlarm('Gusts '+Math.round(g)+' kt — at or above '+CFG.talarm+' kt');
-  else if(soon)startAlarm('Gusts reaching '+CFG.talarm+'+ kt within the hour');
-  else if(!alarming)alarmArmed=true;
+  }else if(!alarming)alarmArmed=true;
+  // Everything short of a measured exceedance is a heads-up, shown not sounded.
+  if(measured&&g!=null&&g>=CFG.talarm){sb.className='standby';sb.textContent='';}
+  else if(imminent){
+    const w=within.reduce((a,b)=>b.g>a.g?b:a);
+    sb.className='standby show warn';
+    sb.textContent='Standby — forecast reaches '+Math.round(w.g)+' kt at '+
+      w.t.toLocaleTimeString([],{hour:'numeric'})+', alarm level is '+CFG.talarm+
+      ' kt. Measured now: '+(g==null?'no reading':Math.round(g)+' kt'+
+      (measured?'':' (modelled)'))+'.';
+  }else if(!measured&&g!=null&&g>=CFG.talarm){
+    sb.className='standby show warn';
+    sb.textContent='Model shows '+Math.round(g)+' kt, at or above the '+CFG.talarm+
+      ' kt alarm — but no live measurement is reaching the page, so the siren is held.';
+  }else{sb.className='standby';sb.textContent='';}
 }
 
 async function refresh(){
@@ -1799,29 +1826,29 @@ async function refresh(){
     .sort((a,b)=>new Date(b.wind.at)-new Date(a.wind.at))[0]:null;
   const bwAge=bw?Date.now()-new Date(bw.wind.at):null;
   if(bw&&bwAge<45*60000){
-    picked={s:bw.wind.sustained_kt,g:bw.wind.gust_kt,d:bw.wind.dir_deg,
+    picked={s:bw.wind.sustained_kt,g:bw.wind.gust_kt,d:bw.wind.dir_deg,m:true,
       src:'NDBC '+bw.id+' · '+ago(bw.wind.at)};
     setFeed('buoy',true,'Buoy '+bw.id);
   }else if(bw)setFeed('buoy','warn','Buoy stale');
   if(!picked){
     const o=await liveObs().catch(()=>{setFeed('obs',false,CFG.stn+' ✕');return null;});
-    if(o)picked=o;
+    if(o)picked=Object.assign(o,{m:true});
     else if(snap&&snap.obs&&snap.obs.gust_kt!=null)
-      picked={s:snap.obs.sustained_kt,g:snap.obs.gust_kt,d:snap.obs.dir_deg,
+      picked={s:snap.obs.sustained_kt,g:snap.obs.gust_kt,d:snap.obs.dir_deg,m:true,
         src:snap.obs.station+' cached · '+ago(snap.obs.observed_at)};
   }
   if(!picked&&cur&&cur.wind_gusts_10m!=null)
-    picked={s:cur.wind_speed_10m,g:cur.wind_gusts_10m,d:cur.wind_direction_10m,
+    picked={s:cur.wind_speed_10m,g:cur.wind_gusts_10m,d:cur.wind_direction_10m,m:false,
       src:'Open-Meteo model'};
   if(!picked&&HOURS.length){
     // nearest forecast hour — works off the collector's cached forecast too
     const n=Date.now();
     const h=HOURS.reduce((a,b)=>Math.abs(b.t-n)<Math.abs(a.t-n)?b:a);
-    if(h&&h.g!=null)picked={s:h.s,g:h.g,d:h.d,src:'forecast for '+
+    if(h&&h.g!=null)picked={s:h.s,g:h.g,d:h.d,m:false,src:'forecast for '+
       h.t.toLocaleTimeString([],{hour:'numeric'})+' — no live reading'};
   }
   if(!picked&&bw)                       // a 50-minute-old measurement beats nothing
-    picked={s:bw.wind.sustained_kt,g:bw.wind.gust_kt,d:bw.wind.dir_deg,
+    picked={s:bw.wind.sustained_kt,g:bw.wind.gust_kt,d:bw.wind.dir_deg,m:true,
       src:'NDBC '+bw.id+' · stale, '+ago(bw.wind.at)};
   CURRENT=picked;
   if(!picked)setFeed('cur',false,'No wind reading');
