@@ -1195,7 +1195,7 @@ function initMap(){
     setFeed('radar',false,'Map blocked');return;
   }
   map=L.map('map',{zoomControl:true,attributionControl:true,preferCanvas:true,
-    minZoom:5,maxZoom:12}).setView([CFG.lat,CFG.lon],8);
+    minZoom:4,maxZoom:10}).setView([CFG.lat,CFG.lon],7);
 
   // Keyless basemaps only. CARTO's basemaps now require an API key, so this
   // uses plain OSM tiles darkened by CSS (see .bm-dark) to suit the dashboard.
@@ -1295,10 +1295,12 @@ function fitAll(force){
   const pts=[[CFG.lat,CFG.lon]];
   if(SNAP&&SNAP.buoys)Object.values(SNAP.buoys).forEach(b=>{
     if(b.lat!=null&&b.lon!=null)pts.push([b.lat,b.lon]);});
-  if(pts.length<2){map.setView([CFG.lat,CFG.lon],9);return;}
+  if(pts.length<2){map.setView([CFG.lat,CFG.lon],7);return;}
   try{
-    map.fitBounds(L.latLngBounds(pts).pad(0.35),{maxZoom:10,animate:!!force});
-  }catch(e){map.setView([CFG.lat,CFG.lon],8);}
+    // Radar is unreadable close in — 7 is the level where the weather actually
+    // shows, so the fit never tightens past it however near the buoys are.
+    map.fitBounds(L.latLngBounds(pts).pad(0.35),{maxZoom:7,animate:!!force});
+  }catch(e){map.setView([CFG.lat,CFG.lon],7);}
 }
 function drawMarkers(){
   if(!map)return;
