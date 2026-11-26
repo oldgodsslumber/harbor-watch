@@ -1,12 +1,16 @@
 {
- "generated_at": "2026-11-26T22:01:43.198Z",
+ "generated_at": "2026-11-26T22:12:21.228Z",
  "archive": {
   "dir": "data/archive",
-  "days": 3,
-  "first": "2026-11-24",
+  "days": 7,
+  "first": "2026-11-20",
   "flushed_now": [
    "2026-11-25",
-   "2026-11-24"
+   "2026-11-24",
+   "2026-11-23",
+   "2026-11-22",
+   "2026-11-21",
+   "2026-11-20"
   ]
  },
  "today_log": {
@@ -18,6 +22,13 @@
     "g": null,
     "d": null,
     "temp": 46.4
+   },
+   {
+    "t": "2026-11-26T21:50:00+00:00",
+    "s": null,
+    "g": 35,
+    "d": null,
+    "temp": 44.6
    }
   ],
   "tide": [
@@ -25,6 +36,11 @@
     "t": "2026-11-26 16:54",
     "v": 1.505,
     "surge": 1.09
+   },
+   {
+    "t": "2026-11-26 17:06",
+    "v": 1.095,
+    "surge": 1.12
    }
   ],
   "probes": [
@@ -79,22 +95,22 @@
    "name": "Boston Approach (16 NM E)",
    "lat": 42.35,
    "lon": -70.651,
-   "observed_at": "2026-11-26T21:10:00.000Z",
+   "observed_at": "2026-11-26T21:20:00.000Z",
    "wind": {
-    "sustained_kt": 23.3,
+    "sustained_kt": 25.3,
     "gust_kt": 31.1,
-    "dir_deg": 70,
-    "at": "2026-11-26T21:10:00.000Z"
+    "dir_deg": 60,
+    "at": "2026-11-26T21:20:00.000Z"
    },
    "waves": {
     "height_ft": 7.9,
     "dominant_period_s": 7,
-    "dir_deg": 98,
-    "at": "2026-11-26T20:50:00.000Z"
+    "dir_deg": 107,
+    "at": "2026-11-26T21:20:00.000Z"
    },
-   "pressure_hpa": 1026.9,
+   "pressure_hpa": 1026.7,
    "pressure_tendency_hpa": -4.4,
-   "air_temp_f": 47.5,
+   "air_temp_f": 47.3,
    "water_temp_f": 52.5
   },
   "44029": {
@@ -102,7 +118,7 @@
    "name": "Buoy A01 — Massachusetts Bay",
    "lat": 42.523,
    "lon": -70.566,
-   "observed_at": "2026-11-26T21:00:00.000Z",
+   "observed_at": "2026-11-26T21:30:00.000Z",
    "wind": {
     "sustained_kt": 25.3,
     "gust_kt": 29.2,
@@ -124,15 +140,15 @@
  "obs": {
   "station": "KBOS",
   "name": "Boston, Logan International Airport",
-  "observed_at": "2026-11-26T21:25:00+00:00",
+  "observed_at": "2026-11-26T21:50:00+00:00",
   "sustained_kt": null,
-  "gust_kt": null,
+  "gust_kt": 35,
   "dir_deg": null,
   "text": "Light Rain",
-  "temp_f": 46.4,
+  "temp_f": 44.6,
   "dewpoint_f": 39.2,
   "windchill_f": null,
-  "humidity_pct": 76,
+  "humidity_pct": 81,
   "visibility_mi": 10
  },
  "alerts": [
@@ -179,19 +195,11 @@
  ],
  "tide": {
   "station": "8443970",
-  "observed_ft": 1.505,
-  "observed_at": "2026-11-26 16:54",
-  "predicted_ft": 0.412,
-  "surge_ft": 1.09,
+  "observed_ft": 1.095,
+  "observed_at": "2026-11-26 17:06",
+  "predicted_ft": -0.026,
+  "surge_ft": 1.12,
   "series": [
-   {
-    "t": "2026-11-26 16:00",
-    "v": 2.809
-   },
-   {
-    "t": "2026-11-26 16:06",
-    "v": 2.518
-   },
    {
     "t": "2026-11-26 16:12",
     "v": 2.232
@@ -1867,6 +1875,14 @@
    {
     "t": "2026-11-28 10:00",
     "v": 4.529
+   },
+   {
+    "t": "2026-11-28 10:06",
+    "v": 4.786
+   },
+   {
+    "t": "2026-11-28 10:12",
+    "v": 5.044
    }
   ],
   "extremes": [
@@ -1907,6 +1923,114 @@
    }
   ]
  },
+ "stations": [
+  {
+   "id": "KBOS",
+   "name": "Boston, Logan International Airport",
+   "kind": "land",
+   "primary": true,
+   "at": "2026-11-26T21:50:00+00:00",
+   "s": null,
+   "g": 35,
+   "d": null,
+   "temp_f": 44.6,
+   "dist_nm": 6.9,
+   "bearing_deg": 205,
+   "bearing": "SSW"
+  },
+  {
+   "id": "KBVY",
+   "name": "Beverly Airport",
+   "kind": "land",
+   "primary": false,
+   "at": "2026-11-26T21:50:00+00:00",
+   "s": 14,
+   "g": 14,
+   "d": 70,
+   "temp_f": 44.6,
+   "text": "Light Rain",
+   "dist_nm": 7.3,
+   "bearing_deg": 10,
+   "bearing": "N"
+  },
+  {
+   "id": "8444069",
+   "name": "Castle Island (waterside)",
+   "kind": "land",
+   "primary": false,
+   "at": "2026-11-26 17:00",
+   "s": 27.02,
+   "g": 31.88,
+   "d": 66,
+   "dist_nm": 8,
+   "bearing_deg": 202,
+   "bearing": "SSW"
+  },
+  {
+   "id": "44013",
+   "name": "Boston Approach (16 NM E)",
+   "kind": "buoy",
+   "primary": true,
+   "at": "2026-11-26T21:20:00.000Z",
+   "s": 25.3,
+   "g": 31.1,
+   "d": 60,
+   "wv": 7.9,
+   "water_f": 52.5,
+   "pressure": 1026.7,
+   "dist_nm": 14.7,
+   "bearing_deg": 118,
+   "bearing": "ESE"
+  },
+  {
+   "id": "44029",
+   "name": "Buoy A01 — Massachusetts Bay",
+   "kind": "buoy",
+   "primary": true,
+   "at": "2026-11-26T21:00:00.000Z",
+   "s": 25.3,
+   "g": 29.2,
+   "d": 70,
+   "wv": 7.5,
+   "water_f": 51.4,
+   "pressure": null,
+   "dist_nm": 17.1,
+   "bearing_deg": 78,
+   "bearing": "ENE"
+  },
+  {
+   "id": "IOSN3",
+   "name": "Isle of Shoals",
+   "kind": "buoy",
+   "primary": false,
+   "at": "2026-11-26T21:30:00.000Z",
+   "s": 29,
+   "g": 33,
+   "d": 70,
+   "wv": null,
+   "water_f": null,
+   "pressure": 1028,
+   "dist_nm": 33.3,
+   "bearing_deg": 25,
+   "bearing": "NNE"
+  },
+  {
+   "id": "44098",
+   "name": "Jeffreys Ledge",
+   "kind": "buoy",
+   "primary": false,
+   "at": "2026-11-26T21:30:00.000Z",
+   "s": null,
+   "g": null,
+   "d": null,
+   "wv": 7.9,
+   "water_f": 51.3,
+   "pressure": null,
+   "dist_nm": 39.7,
+   "bearing_deg": 60,
+   "bearing": "ENE"
+  }
+ ],
  "forecast": [
   {
    "t": "2026-11-26T00:00",
@@ -2786,7 +2910,7 @@
  "peaks_7d": {
   "44013": {
    "gust_kt": 31.1,
-   "at": "2026-11-26T21:10:00.000Z"
+   "at": "2026-11-26T21:20:00.000Z"
   },
   "44029": {
    "gust_kt": 33,
@@ -2795,6 +2919,14 @@
  },
  "history": {
   "44013": [
+   {
+    "t": "2026-11-26T21:20:00.000Z",
+    "s": 25.3,
+    "g": 31.1,
+    "d": 60,
+    "wv": 7.9,
+    "p": 1026.7
+   },
    {
     "t": "2026-11-26T21:10:00.000Z",
     "s": 23.3,
@@ -7718,5 +7850,7 @@
   ]
  },
  "stale": false,
- "errors": []
+ "errors": [
+  "watch 44018: HTTP 404 https://www.ndbc.noaa.gov/data/realtime2/44018.txt"
+ ]
 }
