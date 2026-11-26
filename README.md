@@ -76,6 +76,24 @@ is a log-linear fit anchored at those two published points, and `cumulativeDamag
 applies Miner's rule across the forecast, so the page can say what a whole blow
 costs rather than only how hard the worst gust pulls.
 
+### The alarm
+
+The alarm stores a **tier**, not a speed. `alarmTier` is one of `watch`,
+`concern`, `critical` or `custom`, and the armed speed is derived from the live
+ladder every time it is asked for — by the display, by the pre-alarm banner and
+by the code that actually sounds it, which all call the same `alarmLevel()`.
+Change the line spec and the alarm moves with the thresholds; no save, migration
+or second thought required. `custom` is the single mode that pins a literal
+number, and the card says so in as many words.
+
+This replaced a stored speed, which went stale the first time the thresholds
+moved. The old guard only corrected the alarm if the saved speed fell *outside*
+the new band, so a 30 kt alarm under a 22/30/40 ladder was fixed when the ladder
+became 35/43/52 — but a 40 kt alarm was not, because 40 still sat inside it. It
+stayed armed at the old number with nothing on the page to say so. The card now
+states which threshold the alarm follows and what speed that currently is, so the
+same failure cannot hide again, and `test/alarm.test.mjs` pins both cases.
+
 ### What if it gusts harder
 
 The forecast answers "how hard tonight"; it cannot answer "what happens if it is
@@ -151,6 +169,8 @@ Site-level defaults (buoy list, zones, history length) are at the top of
     node test/sun.test.mjs       #  7 — sun times vs NWS published values
     node test/archive.test.mjs   #  9 — day flushing, rollup, no-rewrite guarantee
     node test/rig.test.mjs       # 17 — mooring load model, validated against ABYC
+    node test/alarm.test.mjs     # 9  — the alarm tracks the live thresholds
+    node test/geometry.test.mjs  # 69 — SVG geometry, run against the shipped index.html
 
 The parser assertion that matters: `WVHT` is `MM` on most rows, so it scans down
 per-field for the most recent real value instead of trusting the newest row.

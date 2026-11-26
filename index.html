@@ -385,6 +385,10 @@ footer a{color:#6c8ead}
       <div class="fld"><label>Watch (kt)</label><input id="t1" type="number" inputmode="numeric"></div>
       <div class="fld"><label>Concern (kt)</label><input id="t2" type="number" inputmode="numeric"></div>
       <div class="fld"><label>Critical (kt)</label><input id="t3" type="number" inputmode="numeric"></div>
+      <div class="fld"><label>Alarm on</label>
+        <select id="talarmtier"><option value="watch">watch</option>
+          <option value="concern">concern</option><option value="critical">critical</option>
+          <option value="custom">a fixed speed</option></select></div>
       <div class="fld"><label>Alarm at (kt)</label><input id="talarm" type="number" inputmode="numeric"></div>
       <div class="fld"><label>Exposed from °</label><input id="arc1" type="number" inputmode="numeric"></div>
       <div class="fld"><label>Exposed to °</label><input id="arc2" type="number" inputmode="numeric"></div>
@@ -476,6 +480,7 @@ footer a{color:#6c8ead}
   <div class="card sp2">
     <h3>When the alarm could trip <span class="rt" id="alarmrt"></span></h3>
     <div class="lthero" id="lthero">—</div>
+    <div class="subline" id="ltprov"></div>
     <div class="daylight" id="daylight"></div>
     <svg id="ltscale" style="width:100%;height:100px" role="img"
          aria-label="Wind now and forecast peak against each threshold"></svg>
@@ -832,8 +837,8 @@ function thresholdsFor(rig) {
            failure: w(1.00) };
 }
 'use strict';
-const DEF={t1:22,t2:30,t3:40,talarm:30,arc1:20,arc2:120,lat:42.465,lon:-70.945,
-  nm:'Lynn Harbor',stn:'KBOS',autoTh:1,
+const DEF={t1:22,t2:30,t3:40,alarmTier:'concern',talarm:30,arc1:20,arc2:120,
+  lat:42.465,lon:-70.945,nm:'Lynn Harbor',stn:'KBOS',autoTh:1,
   // 100 ft, ~100 tons, 7.5 ft draft, lashed to dolphins. Line spec unknown —
   // that unknown is the dominant uncertainty, so it defaults to the cautious end.
   // As reported: 100 ft, ~70 tons, 7.5 ft draft, lashed to dolphins, nine lines
@@ -846,16 +851,54 @@ const DEF={t1:22,t2:30,t3:40,talarm:30,arc1:20,arc2:120,lat:42.465,lon:-70.945,
 let CFG=Object.assign({},DEF);
 try{const s=localStorage.getItem('harborwatch');if(s){const p=JSON.parse(s);
   CFG=Object.assign(CFG,p);CFG.rig=Object.assign({},DEF.rig,p.rig||{});}}catch(e){}
-// Thresholds follow the lines unless the user has taken manual control.
+// The live tier values, whatever their source: derived from the lines in auto
+// mode, typed by hand in manual mode. Everything that needs a threshold number
+// asks here rather than remembering one.
+const TIERS=['watch','concern','critical'];
+function currentTiers(){return {watch:CFG.t1,concern:CFG.t2,critical:CFG.t3};}
+
+// The alarm is stored as a TIER, not a speed, so it tracks the thresholds for
+// free when the rig changes. A stored speed is what went stale before: it only
+// corrected itself when it happened to fall outside the new band, so an old
+// alarm that landed inside the new one stuck silently at the wrong number.
+// 'custom' is the one case that keeps a literal speed.
 function applyAutoThresholds(){
-  if(!CFG.autoTh)return;
-  const th=thresholdsFor(CFG.rig);
-  if(th.watch)CFG.t1=th.watch;
-  if(th.concern)CFG.t2=th.concern;
-  if(th.critical)CFG.t3=th.critical;
-  if(CFG.talarm<CFG.t1||CFG.talarm>CFG.t3)CFG.talarm=CFG.t2;
+  if(CFG.autoTh){
+    const th=thresholdsFor(CFG.rig);
+    if(th.watch)CFG.t1=th.watch;
+    if(th.concern)CFG.t2=th.concern;
+    if(th.critical)CFG.t3=th.critical;
+  }
+  if(CFG.alarmTier!=='custom'&&TIERS.indexOf(CFG.alarmTier)<0)CFG.alarmTier='concern';
+  if(CFG.alarmTier!=='custom'){
+    const v=currentTiers()[CFG.alarmTier];
+    if(isFinite(v)&&v>0)CFG.talarm=v;
+  }
 }
+// Migration: a config saved before the alarm was tiered carries a bare talarm
+// and no tier. Adopt the tier it is closest to rather than keeping the number,
+// so it starts tracking; only an exact mismatch of intent would be lost, and a
+// stale alarm speed is the more dangerous of the two.
+(function migrateAlarm(){
+  if(CFG.alarmTier)return;
+  const stored=Number(CFG.talarm);
+  if(!isFinite(stored)){CFG.alarmTier='concern';return;}
+  const t=currentTiers();
+  let best='concern',d=Infinity;
+  for(const k of TIERS){
+    const gap=Math.abs(t[k]-stored);
+    if(isFinite(gap)&&gap<d){d=gap;best=k;}
+  }
+  CFG.alarmTier=best;
+})();
 applyAutoThresholds();
+// One place that answers "what speed is the alarm at right now". Derived every
+// time it is asked, so no caller can be holding a stale copy.
+function alarmLevel(){
+  if(CFG.alarmTier==='custom')return CFG.talarm;
+  const v=currentTiers()[CFG.alarmTier||'concern'];
+  return (isFinite(v)&&v>0)?v:CFG.talarm;
+}
 function saveCfg(){try{localStorage.setItem('harborwatch',JSON.stringify(CFG));}catch(e){}}
 
 const $=id=>document.getElementById(id);
@@ -1251,7 +1294,20 @@ function drawLeadTime(hours,liveGust){
   const tiers=[{n:'Watch',v:CFG.t1,i:1},{n:'Concern',v:CFG.t2,i:2},{n:'Critical',v:CFG.t3,i:3}];
 
   /* hero: the alarm level specifically */
-  const A=CFG.talarm;
+  // Read the tier live rather than the stored speed, so what the hero announces
+  // and what startAlarm() fires on cannot drift apart.
+  const A=alarmLevel();
+  // State where the number came from. A stale alarm hid in plain sight before
+  // because nothing on the page said what it was supposed to be following.
+  const prov=$('ltprov');
+  if(prov){
+    const tier=CFG.alarmTier||'concern';
+    prov.textContent = tier==='custom'
+      ? 'Alarm fixed at '+A+' kt by hand — it will not move if the lines change.'
+      : 'Alarm follows the '+tier+' threshold ('+A+' kt), which is derived from '+
+        (CFG.autoTh?'the line spec':'the thresholds set by hand')+
+        '. Change the lines and it moves with them.';
+  }
   const hero=$('lthero');
   const fut=win.filter(h=>h.t>now);
   const aEp=episodes(win,A);
@@ -2313,7 +2369,7 @@ function render(){
   (function(){
     const sun=sunTimes(now,CFG.lat,CFG.lon),dl=$('daylight');
     if(!sun){dl.textContent='';return;}
-    const cross=fut.find(h=>h.g>=CFG.talarm);
+    const cross=fut.find(h=>h.g>=alarmLevel());
     const after=cross?cross.t>sun.sunset:false;
     if(now<sun.sunrise){
       dl.innerHTML='Dark — sunrise <b>'+hhmm(sun.sunrise)+'</b> ('+
@@ -2348,23 +2404,23 @@ function render(){
   //     value landed in `g` and tripped the measured branch outright.
   const measured=!!(CURRENT&&CURRENT.m);
   const within=fut.filter(h=>h.t-now<=3600e3);
-  const imminent=within.some(h=>h.g>=CFG.talarm);
+  const imminent=within.some(h=>h.g>=alarmLevel());
   const sb=$('standby');
-  if(measured&&g!=null&&g>=CFG.talarm){
-    startAlarm('Gusts '+Math.round(g)+' kt — at or above '+CFG.talarm+' kt');
+  if(measured&&g!=null&&g>=alarmLevel()){
+    startAlarm('Gusts '+Math.round(g)+' kt — at or above '+alarmLevel()+' kt');
   }else if(!alarming)alarmArmed=true;
   // Everything short of a measured exceedance is a heads-up, shown not sounded.
-  if(measured&&g!=null&&g>=CFG.talarm){sb.className='standby';sb.textContent='';}
+  if(measured&&g!=null&&g>=alarmLevel()){sb.className='standby';sb.textContent='';}
   else if(imminent){
     const w=within.reduce((a,b)=>b.g>a.g?b:a);
     sb.className='standby show warn';
     sb.textContent='Standby — forecast reaches '+Math.round(w.g)+' kt at '+
-      w.t.toLocaleTimeString([],{hour:'numeric'})+', alarm level is '+CFG.talarm+
+      w.t.toLocaleTimeString([],{hour:'numeric'})+', alarm level is '+alarmLevel()+
       ' kt. Measured now: '+(g==null?'no reading':Math.round(g)+' kt'+
       (measured?'':' (modelled)'))+'.';
-  }else if(!measured&&g!=null&&g>=CFG.talarm){
+  }else if(!measured&&g!=null&&g>=alarmLevel()){
     sb.className='standby show warn';
-    sb.textContent='Model shows '+Math.round(g)+' kt, at or above the '+CFG.talarm+
+    sb.textContent='Model shows '+Math.round(g)+' kt, at or above the '+alarmLevel()+
       ' kt alarm — but no live measurement is reaching the page, so the siren is held.';
   }else{sb.className='standby';sb.textContent='';}
 }
@@ -2455,6 +2511,8 @@ async function refresh(){
 function fillForm(){
   ['t1','t2','t3','talarm','arc1','arc2','lat','lon','nm','stn']
     .forEach(k=>$(k).value=CFG[k]);
+  $('talarmtier').value=CFG.alarmTier||'concern';
+  syncAlarmField();
   const r=CFG.rig||{};
   $('rlineset').value=linesetToString(r.lineset);
   $('rbow').value=r.bow_line_helps_abeam?'1':'0';
@@ -2472,9 +2530,27 @@ function fillForm(){
     'is estimated to part near <b>'+th.failure+' kt</b>. Set the real diameter and '+
     'construction and the thresholds move with it.';}
 $('gearbtn').onclick=()=>{$('panel').classList.toggle('show');fillForm();};
+// The alarm speed box is only an input when the tier is 'a fixed speed'. The
+// rest of the time it mirrors the tier it follows, so the panel can never show
+// an alarm number that disagrees with the one actually armed.
+function syncAlarmField(){
+  const tier=$('talarmtier').value;
+  const box=$('talarm');
+  box.disabled=(tier!=='custom');
+  box.title=box.disabled?'Follows the '+tier+' threshold':'';
+  if(tier!=='custom'){
+    const v=({watch:$('t1'),concern:$('t2'),critical:$('t3')})[tier];
+    if(v&&isFinite(parseFloat(v.value)))box.value=parseFloat(v.value);
+  }
+}
+$('talarmtier').onchange=syncAlarmField;
+['t1','t2','t3'].forEach(k=>$(k).addEventListener('input',syncAlarmField));
 $('save').onclick=()=>{
-  ['t1','t2','t3','talarm','arc1','arc2'].forEach(k=>{
+  ['t1','t2','t3','arc1','arc2'].forEach(k=>{
     const v=parseFloat($(k).value);if(isFinite(v))CFG[k]=v;});
+  CFG.alarmTier=$('talarmtier').value;
+  if(CFG.alarmTier==='custom'){
+    const v=parseFloat($('talarm').value);if(isFinite(v))CFG.talarm=v;}
   const la=parseFloat($('lat').value),lo=parseFloat($('lon').value);
   if(isFinite(la))CFG.lat=la;if(isFinite(lo))CFG.lon=lo;
   if($('nm').value.trim())CFG.nm=$('nm').value.trim();

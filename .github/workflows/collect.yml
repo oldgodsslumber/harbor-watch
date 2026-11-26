@@ -36,6 +36,8 @@ jobs:
           node test/sun.test.mjs
           node test/archive.test.mjs
           node test/rig.test.mjs
+          node test/alarm.test.mjs
+          node test/geometry.test.mjs
 
       - name: Collect
         run: node scripts/collect.mjs
