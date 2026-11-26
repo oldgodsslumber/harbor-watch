@@ -98,6 +98,30 @@ t('zero wind gives zero load, no NaN',()=>{
   const a=rigAnalysis(RIG_DEFAULTS,0);
   assert.equal(a.steady_lb,0); assert.equal(a.pct_of_break,0);
 });
+// The what-if table is only useful if the 55-60 kt band it exists to answer is
+// actually in the steep part of the curve for the real rig. If a future change to
+// the lineset or derates makes 60 kt comfortable, these assertions should fail so
+// the table's framing gets revisited rather than quietly lying.
+t('what-if band: 40 kt is indefinite-ish, 60 kt is hours', () => {
+  const a40 = rigAnalysis(RIG_DEFAULTS, 40);
+  const a55 = rigAnalysis(RIG_DEFAULTS, 55);
+  const a60 = rigAnalysis(RIG_DEFAULTS, 60);
+  assert.ok(a40.pct_of_break < 50, '40 kt should be under half of break');
+  assert.ok(a55.pct_of_break > 65 && a55.pct_of_break < 80, '55 kt in the knee');
+  assert.ok(a60.pct_of_break > 80, '60 kt should be past 80%');
+  const h40 = hoursToFailure(a40.pct_of_break / 100);
+  const h60 = hoursToFailure(a60.pct_of_break / 100);
+  assert.ok(h40 > 1000, '40 kt life should be very long');
+  assert.ok(h60 < 6, '60 kt life should be a few hours at most');
+  assert.ok(h40 / h60 > 100, 'the collapse between 40 and 60 should be large');
+});
+
+t('what-if: load really does go as V^2', () => {
+  const lo = rigAnalysis(RIG_DEFAULTS, 40).worst_line_lb;
+  const hi = rigAnalysis(RIG_DEFAULTS, 60).worst_line_lb;
+  assert.ok(Math.abs(hi / lo - (60 / 40) ** 2) < 0.05, 'ratio should be ~2.25');
+});
+
 console.log(pass+' passed, '+fail.length+' failed');
 fail.forEach(f=>console.log('  FAIL '+f));
 process.exit(fail.length?1:0);

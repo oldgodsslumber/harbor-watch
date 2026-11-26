@@ -76,6 +76,31 @@ is a log-linear fit anchored at those two published points, and `cumulativeDamag
 applies Miner's rule across the forecast, so the page can say what a whole blow
 costs rather than only how hard the worst gust pulls.
 
+### What if it gusts harder
+
+The forecast answers "how hard tonight"; it cannot answer "what happens if it is
+worse than forecast", which is the question anyone watching a mooring actually
+has. The Load card tabulates it: load on the worst-working line, percentage of
+breaking strength, and time-to-failure at that load, for 40 through 65 kt, with
+the forecast peak marked in place.
+
+For this rig the band that matters is narrow, because load goes as V² and creep
+life collapses log-linearly above it:
+
+| Gust | Of break | Line life at that load |
+|---|---|---|
+| 40 kt | 38% | months |
+| 50 kt | 60% | days |
+| 55 kt | 72% | ~16 hours |
+| 60 kt | 86% | ~2 hours |
+| 65 kt | 101% | minutes |
+
+Two caveats that both cut in the reassuring direction. These figures hold the
+peak continuously, which real gusts do not. And they exclude the 3" bow hawser
+from the athwartships share; if the lines are set so it does take beam load, 60 kt
+falls to roughly 42% of break and the whole table becomes uninteresting. The
+pessimistic column is the one on the page.
+
 None of this is a survey. Chafe where the lines bear on the dolphins, not tensile
 failure, is the usual way mooring lines actually part.
 
@@ -125,7 +150,7 @@ Site-level defaults (buoy list, zones, history length) are at the top of
     node test/parser.test.mjs    # 11 — NDBC parsing against a real captured file
     node test/sun.test.mjs       #  7 — sun times vs NWS published values
     node test/archive.test.mjs   #  9 — day flushing, rollup, no-rewrite guarantee
-    node test/rig.test.mjs       # 15 — mooring load model, validated against ABYC
+    node test/rig.test.mjs       # 17 — mooring load model, validated against ABYC
 
 The parser assertion that matters: `WVHT` is `MM` on most rows, so it scans down
 per-field for the most recent real value instead of trusting the newest row.

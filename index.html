@@ -176,6 +176,18 @@ svg{display:block;overflow:visible}
 .lcell .l{font-size:10px;letter-spacing:.7px;text-transform:uppercase;color:var(--tx3);font-weight:700}
 .lcell .v{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px}
 .lcell .n{font-size:11px;color:var(--tx3);margin-top:1px}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.subh{font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--tx3);
+  font-weight:700;margin:14px 0 6px}
+.wtab{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+.wtab th,.wtab td{text-align:right;padding:5px 6px;border-bottom:1px solid var(--line)}
+.wtab th:first-child,.wtab td:first-child{text-align:left}
+.wtab thead th{font-size:10px;letter-spacing:.6px;text-transform:uppercase;
+  color:var(--tx3);font-weight:700;border-bottom:1px solid var(--line)}
+.wtab tbody tr:last-child td{border-bottom:0}
+.wtab td.lvl{font-weight:800}
+.wtab tr.fcpk th:first-child::after{content:" forecast peak";font-size:10px;
+  font-weight:600;color:var(--tx3);letter-spacing:.3px}
 .capbar{position:relative;height:26px;border-radius:8px;background:#101822;
   border:1px solid var(--line);margin:22px 0 10px}
 .capfill{position:absolute;left:0;top:0;bottom:0;border-radius:7px 0 0 7px;
@@ -493,6 +505,12 @@ footer a{color:#6c8ead}
     <div class="linegrid" id="dosegrid"></div>
     <div class="capbar" id="dosebar" style="margin-top:6px"></div>
     <div class="subline" id="dosenote"></div>
+    <h4 class="subh">If it gusts harder</h4>
+    <table class="wtab" id="wtab"><caption class="vh">Load and line life at higher gusts</caption>
+      <thead><tr><th scope="col">Gust</th><th scope="col">Worst line</th>
+        <th scope="col">Of break</th><th scope="col">Lasts</th></tr></thead>
+      <tbody id="wtbody"></tbody></table>
+    <div class="subline" id="wtnote"></div>
     <div class="rigwarn" id="rigwarn"></div>
   </div>
   <div class="card">
@@ -1499,6 +1517,38 @@ function drawLoad(nowGust,hours){
     : 'A gust is brief and rarely breaks anything; hours spent high do the damage. '+
       'For cyclic loading the literature treats the peak as if it were held '+
       'continuously, which is the assumption used here.';
+
+  /* ---- what if it gusts harder: the question a forecast cannot answer ---- */
+  // Load goes as V^2 and creep life collapses log-linearly in load, so the two
+  // compound: the interesting band is narrow and worth tabulating explicitly.
+  (function whatIf(){
+    const tb=$('wtbody'); if(!tb) return;
+    const pk=peak?Math.round(peak.g):null;
+    const base=[40,45,50,55,60,65];
+    const sp=base.slice();
+    if(pk!=null&&!sp.includes(pk)) sp.push(pk);
+    sp.sort((a,b)=>a-b);
+    const lifeTxt2=h2=>!isFinite(h2)?'indefinite':h2>=48?Math.round(h2/24)+' days':
+      h2>=2?h2.toFixed(1)+' h':Math.round(h2*60)+' min';
+    tb.innerHTML=sp.map(function(kt){
+      const a=rigAnalysis(rig,kt);
+      const f=a.pct_of_break/100;
+      const life=hoursToFailure(f);
+      const c=f>=1?'--crit':f>=0.8?'--crit':f>=0.5?'--concern':f>=0.33?'--watch':'--calm';
+      return '<tr'+(kt===pk?' class="fcpk"':'')+'><th scope="row">'+kt+' kt</th>'+
+        '<td>'+Math.round(a.worst_line_lb).toLocaleString()+' lb</td>'+
+        '<td class="lvl" style="color:var('+c+')">'+Math.round(a.pct_of_break)+'%</td>'+
+        '<td>'+lifeTxt2(life)+'</td></tr>';
+    }).join('');
+    const a55=rigAnalysis(rig,55), a60=rigAnalysis(rig,60);
+    $('wtnote').textContent='60 kt pulls '+(Math.pow(60/40,2)).toFixed(1)+
+      '\u00d7 as hard as 40 kt, and because creep life collapses once load passes '+
+      'about half of break, the line goes from '+
+      lifeTxt2(hoursToFailure(rigAnalysis(rig,40).pct_of_break/100))+' to '+
+      lifeTxt2(hoursToFailure(a60.pct_of_break/100))+'. The '+
+      Math.round(a55.pct_of_break)+'\u2013'+Math.round(a60.pct_of_break)+
+      '% band is where this mooring stops being comfortable \u2014 not 40 kt.';
+  })();
 
   const pctCap=aPk?Math.min(140,aPk.pct_of_break):(aNow.pct_of_break||0);
   const col=pctCap>=80?cssv('--crit'):pctCap>=50?cssv('--concern'):
