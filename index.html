@@ -139,7 +139,16 @@ svg{display:block;overflow:visible}
   font-variant-numeric:tabular-nums;line-height:1.1}
 .bigline small{font-size:13px;font-weight:600;color:var(--tx3)}
 .subline{font-size:12.5px;color:var(--tx2);margin-top:6px;line-height:1.45}
-.loadbar{display:flex;flex-direction:column;gap:6px;margin:12px 0 8px}
+.grid2b{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:820px){.grid2b{grid-template-columns:1fr}}
+.loadwrap{display:grid;grid-template-columns:150px minmax(220px,1fr) minmax(200px,1.1fr);
+  gap:20px;align-items:center}
+@media(max-width:860px){.loadwrap{grid-template-columns:1fr;gap:10px}}
+.loadbig{display:flex;align-items:baseline;gap:8px;font-size:42px;font-weight:800;
+  font-variant-numeric:tabular-nums;line-height:1}
+.loadbig small{font-size:12px;font-weight:600;color:var(--tx3);letter-spacing:.3px}
+.loadwrap .subline{margin-top:0}
+.loadbar{display:flex;flex-direction:column;gap:6px;margin:0 0 8px}
 .loadbar .lb{height:16px;border-radius:5px;position:relative;min-width:42px}
 .loadbar .lb.now{background:#33506d}
 .loadbar .lb.pk{background:var(--concern);width:100%}
@@ -319,7 +328,7 @@ footer a{color:#6c8ead}
 
     <div class="card">
       <h3>Tide now <span class="rt" id="tidedir"></span></h3>
-      <svg id="tidelevel" viewBox="0 0 170 230" style="width:100%;max-width:190px;margin:0 auto"
+      <svg id="tidelevel" viewBox="0 0 200 244" style="width:100%;max-width:200px;margin:0 auto"
            role="img" aria-labelledby="tllab"><title id="tllab">Current water level</title></svg>
       <div class="tidefacts">
         <div class="tf"><div class="l">Observed</div><div class="v" id="wl">—</div><div class="n">ft above MLLW</div></div>
@@ -341,6 +350,19 @@ footer a{color:#6c8ead}
     <div class="hint" id="lthint">Each bar is the next 48 hours. Shaded blocks are the hours the
       forecast gust sits at or above that level — so a long block is a long blow, not a single spike.
       Peak on record is the worst gust the collector has actually measured in the last 7 days.</div>
+  </div>
+
+  <div class="card mb">
+    <h3>Load on the gear <span class="rt">wind force rises with the square of speed</span></h3>
+    <div class="loadwrap">
+      <div class="loadbig"><span id="loadx">—</span><small>peak vs now</small></div>
+      <div class="loadmid">
+        <div class="loadbar" id="loadbar"></div>
+        <div class="loadrow"><span>now <b id="loadnow">—</b></span>
+          <span>peak <b id="loadpk">—</b> <i id="loadpkt"></i></span></div>
+      </div>
+      <div class="subline" id="loadnote"></div>
+    </div>
   </div>
 
   <div class="mb">
@@ -387,12 +409,9 @@ footer a{color:#6c8ead}
       <svg id="baro" style="width:100%;height:70px" role="img" aria-label="Pressure, last 30 hours"></svg>
     </div>
     <div class="card">
-      <h3>Load on the gear</h3>
-      <div class="bigline"><span id="loadx">—</span><small>peak vs now</small></div>
-      <div class="loadbar" id="loadbar"></div>
-      <div class="loadrow"><span>now <b id="loadnow">—</b></span>
-        <span>peak <b id="loadpk">—</b> <i id="loadpkt"></i></span></div>
-      <div class="subline" id="loadnote"></div>
+      <h3>Sun <span class="rt" id="sunrt"></span></h3>
+      <svg id="sunarc" style="width:100%;height:142px" role="img"
+           aria-label="Sun position, sunrise and sunset"></svg>
     </div>
     <div class="card">
       <h3>Water temperature</h3>
@@ -695,8 +714,8 @@ function drawTideLevel(t){
   const inner=el('g',{transform:'translate('+X+' 0)'});
   inner.appendChild(el('rect',{x:-WAVE_L,y:0,width:W+WAVE_L*2,height:400,
     fill:cssv('--sea2')}));
-  inner.appendChild(el('path',{d:wavePath(W,5),fill:cssv('--sea'),opacity:.85,class:'wave'}));
-  inner.appendChild(el('path',{d:wavePath(W,3.2),fill:'#49a0e8',opacity:.4,class:'wave2'}));
+  inner.appendChild(el('path',{d:wavePath(W,7.5),fill:cssv('--sea'),opacity:.9,class:'wave'}));
+  inner.appendChild(el('path',{d:wavePath(W,5),fill:'#49a0e8',opacity:.45,class:'wave2'}));
   surf.appendChild(inner);
   g.appendChild(surf);
   // seabed sits in front of the water so the tank reads as a harbour section
@@ -727,8 +746,6 @@ function drawTideLevel(t){
       fill:'#64768c'},v===0?'MLLW':v.toFixed(1)));
   });
   if(level!=null){
-    svg.appendChild(el('line',{x1:X,y1:wy,x2:X+W,y2:wy,stroke:'#dceaff',
-      'stroke-width':2,opacity:.95}));
     svg.appendChild(el('text',{x:X+W/2,y:topY-26,'text-anchor':'middle',class:'svgnum',
       'font-size':30,fill:'#dceaff'},level.toFixed(1)+' ft'));
   }else{
@@ -1078,6 +1095,97 @@ function drawWater(){
   $('wnote').textContent=band+' if someone goes in. Wear a PFD in the tender.';
 }
 
+/* ---------- sun arc ---------- */
+// Sun rides an arc above the horizon through the day and dips below it at
+// night, with civil twilight shaded either side of the horizon line.
+function drawSun(){
+  const svg=$('sunarc');svg.textContent='';
+  const W=300,H=142,cx=150,hz=94,rx=118,ryDay=62,ryNight=24;
+  svg.setAttribute('viewBox','0 0 '+W+' '+H);
+  const now=new Date();
+  const s=sunTimes(now,CFG.lat,CFG.lon);
+  if(!s){svg.appendChild(el('text',{x:cx,y:hz,'text-anchor':'middle',class:'svgtick',
+    fill:'#64768c'},'no sun data'));return;}
+
+  const defs=el('defs',{});
+  const sky=el('linearGradient',{id:'skyg',x1:0,y1:0,x2:0,y2:1});
+  [['0%','#1d3c63','.95'],['55%','#2a4a6b','.6'],['100%','#243243','.15']]
+    .forEach(([o,c,op])=>sky.appendChild(el('stop',
+      {offset:o,'stop-color':c,'stop-opacity':op})));
+  defs.appendChild(sky);
+  const glow=el('radialGradient',{id:'sung'});
+  glow.appendChild(el('stop',{offset:'0%','stop-color':'#ffe066','stop-opacity':'.85'}));
+  glow.appendChild(el('stop',{offset:'100%','stop-color':'#ffe066','stop-opacity':'0'}));
+  defs.appendChild(glow);
+  svg.appendChild(defs);
+
+  // sky above the horizon, sea below
+  svg.appendChild(el('rect',{x:0,y:6,width:W,height:hz-6,fill:'url(#skyg)'}));
+  svg.appendChild(el('rect',{x:0,y:hz,width:W,height:H-hz,fill:'#101b27'}));
+  // civil twilight band straddling the horizon
+  svg.appendChild(el('rect',{x:0,y:hz-9,width:W,height:18,fill:'#c98a3a',opacity:.13}));
+
+  const up=(x,y)=>'M'+(cx-rx)+','+hz+' A'+rx+','+y+' 0 0 1 '+(cx+rx)+','+hz;
+  svg.appendChild(el('path',{d:up(0,ryDay),fill:'none',stroke:'#3d5570',
+    'stroke-width':1.5,'stroke-dasharray':'3 4'}));
+  svg.appendChild(el('path',{d:'M'+(cx-rx)+','+hz+' A'+rx+','+ryNight+' 0 0 0 '+
+    (cx+rx)+','+hz,fill:'none',stroke:'#2a3a4d','stroke-width':1.5,
+    'stroke-dasharray':'2 5'}));
+  svg.appendChild(el('line',{x1:4,y1:hz,x2:W-4,y2:hz,stroke:'#51657d','stroke-width':1.5}));
+
+  // where the sun is: fraction of the day, or of the night
+  let frac,daytime,px,py;
+  if(now>=s.sunrise&&now<=s.sunset){
+    daytime=true;frac=(now-s.sunrise)/(s.sunset-s.sunrise);
+    const th=Math.PI*frac;
+    px=cx-rx*Math.cos(th);py=hz-ryDay*Math.sin(th);
+  }else{
+    daytime=false;
+    let from,to;
+    if(now>s.sunset){from=s.sunset;const tm=sunTimes(new Date(now.getTime()+864e5),
+      CFG.lat,CFG.lon);to=tm?tm.sunrise:new Date(+s.sunset+12*3600e3);}
+    else{const ym=sunTimes(new Date(now.getTime()-864e5),CFG.lat,CFG.lon);
+      from=ym?ym.sunset:new Date(+s.sunrise-12*3600e3);to=s.sunrise;}
+    frac=Math.min(1,Math.max(0,(now-from)/(to-from)));
+    const th=Math.PI*frac;
+    px=cx+rx*Math.cos(th);py=hz+ryNight*Math.sin(th);
+  }
+  // arc already travelled, drawn solid over the dashed track
+  if(daytime){
+    const steps=Math.max(2,Math.round(frac*48));
+    let d='';
+    for(let i=0;i<=steps;i++){
+      const th=Math.PI*frac*(i/steps);
+      const x=cx-rx*Math.cos(th),y=hz-ryDay*Math.sin(th);
+      d+=(i?'L':'M')+x.toFixed(1)+','+y.toFixed(1);
+    }
+    svg.appendChild(el('path',{d:d,fill:'none',stroke:'#ffe066','stroke-width':2.5,
+      'stroke-linecap':'round',opacity:.9}));
+  }
+
+  svg.appendChild(el('circle',{cx:px,cy:py,r:22,fill:'url(#sung)'}));
+  svg.appendChild(el('circle',{cx:px,cy:py,r:daytime?8:6,
+    fill:daytime?'#ffe066':'#8da7c4',stroke:'#0b0f14','stroke-width':2}));
+
+  // horizon crossings
+  [[cx-rx,s.sunrise,'Sunrise','start'],[cx+rx,s.sunset,'Sunset','end']]
+    .forEach(([x,t,lab,anch])=>{
+      svg.appendChild(el('circle',{cx:x,cy:hz,r:3,fill:'#8da7c4'}));
+      svg.appendChild(el('text',{x:anch==='start'?x-2:x+2,y:hz+18,'text-anchor':anch,
+        class:'svglab',fill:'#64768c'},lab));
+      svg.appendChild(el('text',{x:anch==='start'?x-2:x+2,y:hz+34,'text-anchor':anch,
+        'font-size':14,'font-weight':700,fill:'#cfe4ff',
+        style:'font-variant-numeric:tabular-nums'},hhmm(t)));
+    });
+
+  const msg=daytime?fmtDur(s.sunset-now)+' of daylight left'
+    :(now>s.sunset?'Dark — '+fmtDur((sunTimes(new Date(now.getTime()+864e5),CFG.lat,CFG.lon)||
+        {sunrise:new Date(+now+36e5)}).sunrise-now)+' to sunrise'
+      :fmtDur(s.sunrise-now)+' to sunrise');
+  svg.appendChild(el('text',{x:cx,y:18,'text-anchor':'middle','font-size':13,
+    'font-weight':700,fill:daytime?'#ffe066':'#8da7c4'},msg));
+}
+
 /* ---------- map ---------- */
 let map,radarLayers=[],frames=[],frameIdx=0,playing=true,playTimer=null,markerLayer,arcLayer;
 let baseOSM,baseChart,chartErrs=0,baseMode='map';
@@ -1086,19 +1194,19 @@ function initMap(){
     $('map').style.display='none';$('mapfallback').style.display='block';
     setFeed('radar',false,'Map blocked');return;
   }
-  map=L.map('map',{zoomControl:true,attributionControl:true,preferCanvas:true})
-    .setView([CFG.lat,CFG.lon],9);
+  map=L.map('map',{zoomControl:true,attributionControl:true,preferCanvas:true,
+    minZoom:5,maxZoom:12}).setView([CFG.lat,CFG.lon],8);
 
   // Keyless basemaps only. CARTO's basemaps now require an API key, so this
   // uses plain OSM tiles darkened by CSS (see .bm-dark) to suit the dashboard.
   // Keep the volume low — this is OSM's donated tile service, not a CDN.
   baseOSM=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    {attribution:'&copy; OpenStreetMap contributors',maxZoom:19,className:'bm-dark'});
+    {attribution:'&copy; OpenStreetMap contributors',maxZoom:12,className:'bm-dark'});
   // NOAA raster nautical charts: depths, channels and aids to navigation.
   // Also keyless, but unverified from the build environment, so any tile error
   // falls back to OSM rather than leaving a blank pane.
   baseChart=L.tileLayer('https://tileservice.charts.noaa.gov/tiles/50000_1/{z}/{x}/{y}.png',
-    {attribution:'&copy; NOAA Office of Coast Survey',maxZoom:16});
+    {attribution:'&copy; NOAA Office of Coast Survey',maxZoom:12});
   baseChart.on('tileerror',()=>{
     if(baseMode!=='chart')return;
     if(++chartErrs<4)return;
@@ -1151,14 +1259,13 @@ $('playbtn').onclick=()=>{playing=!playing;
   playing?startPlay():stopPlay();};
 $('frame').oninput=e=>{playing=false;$('playbtn').textContent='▶ Play';
   $('playbtn').classList.remove('on');stopPlay();showFrame(+e.target.value);};
-$('recenter').onclick=()=>{if(map)map.setView([CFG.lat,CFG.lon],9);};
+$('recenter').onclick=()=>fitAll(true);
 function setBase(mode){
   if(!map||!baseOSM||!baseChart)return;
   baseMode=mode;
   if(mode==='chart'){chartErrs=0;
     if(map.hasLayer(baseOSM))map.removeLayer(baseOSM);
     baseChart.addTo(map);
-    if(map.getZoom()>16)map.setZoom(16);
   }else{
     if(map.hasLayer(baseChart))map.removeLayer(baseChart);
     baseOSM.addTo(map);
@@ -1181,6 +1288,17 @@ function windIcon(dir,gust){
       'top:-27px;width:0;height:0;border-left:7px solid transparent;'+
       'border-right:7px solid transparent;border-bottom:10px solid '+col+';'+
       'filter:drop-shadow(0 0 2px rgba(0,0,0,.9))"></span></span></div>'});
+}
+let fittedOnce=false;
+function fitAll(force){
+  if(!map)return;
+  const pts=[[CFG.lat,CFG.lon]];
+  if(SNAP&&SNAP.buoys)Object.values(SNAP.buoys).forEach(b=>{
+    if(b.lat!=null&&b.lon!=null)pts.push([b.lat,b.lon]);});
+  if(pts.length<2){map.setView([CFG.lat,CFG.lon],9);return;}
+  try{
+    map.fitBounds(L.latLngBounds(pts).pad(0.35),{maxZoom:10,animate:!!force});
+  }catch(e){map.setView([CFG.lat,CFG.lon],8);}
 }
 function drawMarkers(){
   if(!map)return;
@@ -1213,6 +1331,7 @@ function drawMarkers(){
         (b.water_temp_f!=null?'<br>Water '+b.water_temp_f+'°F':'')+
         '<br><span style="color:#93a4b8">'+ago(b.observed_at)+'</span>').addTo(markerLayer);
   });
+  if(!fittedOnce&&SNAP&&SNAP.buoys&&Object.keys(SNAP.buoys).length){fittedOnce=true;fitAll(false);}
 }
 
 /* ---------- data ---------- */
@@ -1432,6 +1551,7 @@ function render(){
   drawPressure();
   drawLoad(g,HOURS);
   drawWater();
+  drawSun();
   $('locname').textContent=CFG.nm;
   $('updated').textContent='Updated '+hhmm(now)+' · auto-refresh 5 min';
   drawMarkers();
@@ -1489,7 +1609,7 @@ $('save').onclick=()=>{
   if($('nm').value.trim())CFG.nm=$('nm').value.trim();
   if($('stn').value.trim())CFG.stn=$('stn').value.trim().toUpperCase();
   saveCfg();$('panel').classList.remove('show');alarmArmed=true;
-  if(map)map.setView([CFG.lat,CFG.lon],9);
+  if(map){fittedOnce=false;fitAll(true);}
   refresh();};
 $('testsound').onclick=()=>beep(3);
 document.addEventListener('click',()=>{try{
@@ -1499,7 +1619,8 @@ document.addEventListener('click',()=>{try{
 let rz;
 window.addEventListener('resize',()=>{clearTimeout(rz);
   rz=setTimeout(()=>{if(TIDE)drawTideCurve(TIDE);
-    if(HOURS.length)drawLeadTime(HOURS,CURRENT?CURRENT.g:null);},180);});
+    if(HOURS.length)drawLeadTime(HOURS,CURRENT?CURRENT.g:null);
+    drawSun();drawPressure();},180);});
 
 fillForm();
 try{initMap();}catch(e){$('map').style.display='none';
