@@ -674,9 +674,10 @@ function drawCompass(dir,gust){
     svg.appendChild(g);
   }
   svg.appendChild(el('text',{x:cx,y:cy+26,'text-anchor':'middle',class:'svgnum',
-    'font-size':24,fill:col},compass(dir)));
+    'font-size':dir==null?16:24,fill:dir==null?'#64768c':col},
+    dir==null?'NO READING':compass(dir)));
   svg.appendChild(el('text',{x:cx,y:cy+41,'text-anchor':'middle',class:'svgtick',
-    fill:'#64768c'},dir==null?'no data':'from '+Math.round(dir)+'°'));
+    fill:'#64768c'},dir==null?'all wind sources failed':'from '+Math.round(dir)+'°'));
 }
 
 /* ---------- tide level, with slow water ---------- */
@@ -1572,11 +1573,16 @@ async function refresh(){
     HOURS=snap.forecast.map(h=>({t:new Date(h.t),s:h.s,g:h.g,d:h.d}));
 
   // best current source first: on-water buoy, then land obs, then cache, then model
+  // Source ladder, best first. Every rung must be able to stand alone: the
+  // compass went blank whenever the live Open-Meteo call failed, because the
+  // last rung needed its `current` block even though HOURS already held a
+  // perfectly good direction for this hour from the collector's forecast.
   let picked=null;
   const bw=snap&&snap.buoys?Object.values(snap.buoys)
     .filter(b=>b.wind&&b.wind.gust_kt!=null)
     .sort((a,b)=>new Date(b.wind.at)-new Date(a.wind.at))[0]:null;
-  if(bw&&(Date.now()-new Date(bw.wind.at))<45*60000){
+  const bwAge=bw?Date.now()-new Date(bw.wind.at):null;
+  if(bw&&bwAge<45*60000){
     picked={s:bw.wind.sustained_kt,g:bw.wind.gust_kt,d:bw.wind.dir_deg,
       src:'NDBC '+bw.id+' · '+ago(bw.wind.at)};
     setFeed('buoy',true,'Buoy '+bw.id);
@@ -1584,12 +1590,26 @@ async function refresh(){
   if(!picked){
     const o=await liveObs().catch(()=>{setFeed('obs',false,CFG.stn+' ✕');return null;});
     if(o)picked=o;
-    else if(snap&&snap.obs)picked={s:snap.obs.sustained_kt,g:snap.obs.gust_kt,
-      d:snap.obs.dir_deg,src:snap.obs.station+' cached · '+ago(snap.obs.observed_at)};
+    else if(snap&&snap.obs&&snap.obs.gust_kt!=null)
+      picked={s:snap.obs.sustained_kt,g:snap.obs.gust_kt,d:snap.obs.dir_deg,
+        src:snap.obs.station+' cached · '+ago(snap.obs.observed_at)};
   }
-  if(!picked&&cur)picked={s:cur.wind_speed_10m,g:cur.wind_gusts_10m,
-    d:cur.wind_direction_10m,src:'Open-Meteo model'};
+  if(!picked&&cur&&cur.wind_gusts_10m!=null)
+    picked={s:cur.wind_speed_10m,g:cur.wind_gusts_10m,d:cur.wind_direction_10m,
+      src:'Open-Meteo model'};
+  if(!picked&&HOURS.length){
+    // nearest forecast hour — works off the collector's cached forecast too
+    const n=Date.now();
+    const h=HOURS.reduce((a,b)=>Math.abs(b.t-n)<Math.abs(a.t-n)?b:a);
+    if(h&&h.g!=null)picked={s:h.s,g:h.g,d:h.d,src:'forecast for '+
+      h.t.toLocaleTimeString([],{hour:'numeric'})+' — no live reading'};
+  }
+  if(!picked&&bw)                       // a 50-minute-old measurement beats nothing
+    picked={s:bw.wind.sustained_kt,g:bw.wind.gust_kt,d:bw.wind.dir_deg,
+      src:'NDBC '+bw.id+' · stale, '+ago(bw.wind.at)};
   CURRENT=picked;
+  if(!picked)setFeed('cur',false,'No wind reading');
+  else delete feeds.cur;
 
   const al=await liveAlerts().catch(()=>null);
   renderAlerts(al||(snap?snap.alerts:null));
