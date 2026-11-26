@@ -65,7 +65,10 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
   font-family:ui-rounded,-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif;
   -webkit-font-smoothing:antialiased}
 body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
-.wrap{max-width:1400px;margin:0 auto;padding:14px 16px 40px}
+.wrap{max-width:none;margin:0;padding:14px clamp(14px,1.6vw,34px) 44px}
+/* Prose should not stretch to 200 characters just because the monitor is wide;
+   only the data surfaces benefit from the extra width. */
+.hint,.subline,.alert p,.daylight,.exposed{max-width:104ch}
 header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:12px}
 h1{font-size:19px;margin:0;font-weight:700;letter-spacing:.2px}
 .sub{font-size:13px;color:var(--tx2)}
@@ -171,6 +174,14 @@ svg{display:block;overflow:visible}
   font-size:13.5px;line-height:1.45;background:#2a2411;border:1px solid #6b5a1f;
   color:#ffe9a8}
 .sttable{width:100%;overflow-x:auto}
+@media(min-width:1700px){
+  .grid3{grid-template-columns:1.2fr .95fr 1fr}
+  .precipbars{height:158px}
+  .condtemp{font-size:54px}
+  .bigline{font-size:40px}
+  #ltstrip{height:150px}
+  .tl{height:230px}
+}
 .sttable table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
 .sttable th{font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--tx3);
   font-weight:700;text-align:right;padding:0 0 7px;white-space:nowrap}
@@ -206,6 +217,8 @@ svg{display:block;overflow:visible}
 .tf .v{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px}
 .tf .n{font-size:10.5px;color:var(--tx3)}
 #map{height:430px;border-radius:12px;background:#0d141c;z-index:0}
+@media(min-width:1700px){#map{height:520px}}
+@media(min-width:2300px){#map{height:600px}}
 @media(max-width:900px){#map{height:330px}}
 .leaflet-container{font-family:inherit}
 /* Dark-mode the basemap WITHOUT touching radar, markers or popups: the filter
@@ -339,7 +352,7 @@ footer a{color:#6c8ead}
     <div class="card">
       <h3>Wind speed <span class="rt" id="nowsrc"></span></h3>
       <div class="gaugewrap">
-        <svg id="gauge" viewBox="0 0 260 186" style="width:100%;max-width:300px" role="img"
+        <svg id="gauge" viewBox="0 0 260 186" style="width:100%;max-width:340px" role="img"
              aria-labelledby="gaugelab"><title id="gaugelab">Wind gust gauge</title></svg>
         <span class="statechip" id="chip"><span class="dot"></span><span id="chiptx">—</span></span>
       </div>
@@ -348,7 +361,7 @@ footer a{color:#6c8ead}
     <div class="card">
       <h3>Wind direction</h3>
       <div class="gaugewrap">
-        <svg id="compass" viewBox="0 0 200 200" style="width:100%;max-width:210px" role="img"
+        <svg id="compass" viewBox="0 0 200 200" style="width:100%;max-width:250px" role="img"
              aria-labelledby="complab"><title id="complab">Wind direction compass</title></svg>
       </div>
       <div class="exposed" id="expnow"></div>
@@ -356,7 +369,7 @@ footer a{color:#6c8ead}
 
     <div class="card">
       <h3>Tide now <span class="rt" id="tidedir"></span></h3>
-      <svg id="tidelevel" viewBox="0 0 200 244" style="width:100%;max-width:200px;margin:0 auto"
+      <svg id="tidelevel" viewBox="0 0 200 244" style="width:100%;max-width:230px;margin:0 auto"
            role="img" aria-labelledby="tllab"><title id="tllab">Current water level</title></svg>
       <div class="tidefacts">
         <div class="tf"><div class="l">Observed</div><div class="v" id="wl">—</div><div class="n">ft above MLLW</div></div>
@@ -739,7 +752,7 @@ function drawCompass(dir,gust){
     'font-size':dir==null?16:24,fill:dir==null?'#64768c':col},
     dir==null?'NO READING':compass(dir)));
   svg.appendChild(el('text',{x:cx,y:cy+41,'text-anchor':'middle',class:'svgtick',
-    fill:'#64768c'},dir==null?'all wind sources failed':'from '+Math.round(dir)+'°'));
+    fill:'#64768c'},dir==null?'see the chips above for why':'from '+Math.round(dir)+'°'));
 }
 
 /* ---------- tide level, with slow water ---------- */
@@ -1872,8 +1885,8 @@ function render(){
 }
 
 async function refresh(){
-  const snap=await loadSnapshot().catch(()=>{setFeed('snap',false,'Collector ✕');return null;});
-  const cur=await liveForecast().catch(()=>{setFeed('fc',false,'Forecast ✕');return null;});
+  const snap=await loadSnapshot().catch(e=>{setFeed('snap',false,'Collector ✕',whyFail(e));return null;});
+  const cur=await liveForecast().catch(e=>{setFeed('fc',false,'Forecast ✕',whyFail(e));return null;});
   if(!HOURS.length&&snap&&snap.forecast)
     HOURS=snap.forecast.map(h=>({t:new Date(h.t),s:h.s,g:h.g,d:h.d,p:h.p,pp:h.pp,
       sn:h.sn,wc:h.wc,tc:h.tc,fl:h.fl}));
@@ -1894,7 +1907,7 @@ async function refresh(){
     setFeed('buoy',true,'Buoy '+bw.id);
   }else if(bw)setFeed('buoy','warn','Buoy stale');
   if(!picked){
-    const o=await liveObs().catch(()=>{setFeed('obs',false,CFG.stn+' ✕');return null;});
+    const o=await liveObs().catch(e=>{setFeed('obs',false,CFG.stn+' ✕',whyFail(e));return null;});
     if(o)picked=Object.assign(o,{m:true});
     else if(snap&&snap.obs&&snap.obs.gust_kt!=null)
       picked={s:snap.obs.sustained_kt,g:snap.obs.gust_kt,d:snap.obs.dir_deg,m:true,
@@ -1913,9 +1926,37 @@ async function refresh(){
   if(!picked&&bw)                       // a 50-minute-old measurement beats nothing
     picked={s:bw.wind.sustained_kt,g:bw.wind.gust_kt,d:bw.wind.dir_deg,m:true,
       src:'NDBC '+bw.id+' · stale, '+ago(bw.wind.at)};
+
+  // KBOS intermittently reports a gust with a null direction and null sustained.
+  // Taking a source whole then meant the compass went blank while a gust showed.
+  // Borrow any missing field from the next source that has it, and say so.
+  if(picked){
+    const donors=[];
+    if(bw&&bw.wind) donors.push(['NDBC '+bw.id,bw.wind.dir_deg,bw.wind.sustained_kt]);
+    if(snap&&snap.stations) for(const st of snap.stations)
+      donors.push([st.id,st.d,st.s]);
+    if(snap&&snap.obs) donors.push([snap.obs.station,snap.obs.dir_deg,snap.obs.sustained_kt]);
+    if(cur) donors.push(['model',cur.wind_direction_10m,cur.wind_speed_10m]);
+    const nowH=HOURS.length?HOURS.reduce((a,b)=>
+      Math.abs(b.t-Date.now())<Math.abs(a.t-Date.now())?b:a):null;
+    if(nowH) donors.push(['forecast',nowH.d,nowH.s]);
+    if(picked.d==null){
+      const dn=donors.find(x=>x[1]!=null);
+      if(dn){picked.d=dn[1];picked.borrowed=(picked.borrowed||[]).concat('direction from '+dn[0]);}
+    }
+    if(picked.s==null||picked.s===0){
+      const sn=donors.find(x=>x[2]!=null&&x[2]>0);
+      if(sn){picked.s=sn[2];picked.borrowed=(picked.borrowed||[]).concat('sustained from '+sn[0]);}
+    }
+    if(picked.borrowed)picked.src+=' · '+picked.borrowed.join(', ');
+  }
   CURRENT=picked;
-  if(!picked)setFeed('cur',false,'No wind reading');
-  else delete feeds.cur;
+  if(!picked){
+    const why=Object.values(feeds).filter(f=>f.st===false&&f.why)
+      .map(f=>f.label.replace(' ✕','')+': '+f.why);
+    setFeed('cur',false,'No wind reading',why.join(' · ')||'no source returned a gust');
+    window.__noWindWhy=why;
+  }else{delete feeds.cur;window.__noWindWhy=null;}
 
   const al=await liveAlerts().catch(()=>null);
   renderAlerts(al||(snap?snap.alerts:null));
