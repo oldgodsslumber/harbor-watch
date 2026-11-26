@@ -170,6 +170,21 @@ svg{display:block;overflow:visible}
 .standby.show{display:block;border-radius:12px;padding:11px 14px;margin-bottom:12px;
   font-size:13.5px;line-height:1.45;background:#2a2411;border:1px solid #6b5a1f;
   color:#ffe9a8}
+.sttable{width:100%;overflow-x:auto}
+.sttable table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.sttable th{font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--tx3);
+  font-weight:700;text-align:right;padding:0 0 7px;white-space:nowrap}
+.sttable th:first-child,.sttable td:first-child{text-align:left}
+.sttable td{font-size:13.5px;padding:8px 0;border-top:1px solid var(--line);
+  text-align:right;white-space:nowrap}
+.sttable td:first-child{padding-right:14px}
+.sttable tr.pri td{background:rgba(77,163,255,.05)}
+.stname{font-weight:600;color:var(--tx)}
+.stid{font-size:11px;color:var(--tx3);margin-left:6px}
+.stpri{font-size:9.5px;font-weight:800;letter-spacing:.6px;color:#9fd0f5;
+  border:1px solid #2d568a;border-radius:4px;padding:1px 5px;margin-left:7px}
+.stg{font-weight:800}
+.stale{color:var(--tx3)}
 .alertlist{display:flex;flex-direction:column;gap:9px}
 .alertmore{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
 .alertmore span{font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:999px;
@@ -455,6 +470,16 @@ footer a{color:#6c8ead}
       <div class="bigline"><span id="wtemp">—</span></div>
       <div class="subline" id="wnote"></div>
     </div>
+  </div>
+
+
+  <div class="card mb">
+    <h3>All stations <span class="rt" id="stationsrt">monitoring only — the alarm uses the primaries</span></h3>
+    <div class="sttable" id="stations"></div>
+    <div class="hint">Sorted by distance from the mooring. <b>Primary</b> marks the feeds the
+      alarm ladder actually uses; everything else is here to watch. Spread between stations is
+      the point — an airport anemometer and a waterside one in the same breeze routinely differ
+      by several knots, and none of these is Lynn Harbor itself.</div>
   </div>
 
   <div class="card mb">
@@ -1397,6 +1422,43 @@ function drawPrecip(){
   $('precipnote').textContent=bits.join(' · ');
 }
 
+
+/* ---------- all stations (monitoring) ---------- */
+function drawStations(){
+  const el2=$('stations');
+  // sort here too: the caption promises distance order, so don't trust the feed's
+  const st=((SNAP&&SNAP.stations)||[]).slice()
+    .sort((a,b)=>(a.dist_nm==null?1e9:a.dist_nm)-(b.dist_nm==null?1e9:b.dist_nm));
+  if(!st.length){el2.innerHTML='<div class="hint">waiting for the collector</div>';
+    $('stationsrt').textContent='';return;}
+  const cell=(v,u)=>v==null?'<span class="stale">—</span>':Math.round(v)+(u||'');
+  const rows=st.map(x=>{
+    const age=x.at?(Date.now()-new Date(String(x.at).replace(' ','T')))/60000:null;
+    const old=age!=null&&age>70;
+    return '<tr class="'+(x.primary?'pri':'')+'">'+
+      '<td><span class="stname">'+x.name+'</span>'+
+        '<span class="stid">'+x.id+'</span>'+
+        (x.primary?'<span class="stpri">PRIMARY</span>':'')+'</td>'+
+      '<td>'+x.dist_nm.toFixed(1)+' nm</td>'+
+      '<td>'+x.bearing+'</td>'+
+      '<td class="stg" style="color:var('+TVAR[tier(x.g||0)]+')">'+cell(x.g)+'</td>'+
+      '<td>'+cell(x.s)+'</td>'+
+      '<td>'+(x.d==null?'<span class="stale">—</span>':compass(x.d))+'</td>'+
+      '<td>'+(x.wv==null?'<span class="stale">—</span>':x.wv.toFixed(1))+'</td>'+
+      '<td>'+cell(x.water_f!=null?x.water_f:x.temp_f,'°')+'</td>'+
+      '<td class="'+(old?'stale':'')+'">'+(x.at?ago(x.at):'—')+'</td></tr>';
+  }).join('');
+  el2.innerHTML='<table><thead><tr><th>Station</th><th>Dist</th><th>Brg</th>'+
+    '<th>Gust kt</th><th>Sust kt</th><th>Dir</th><th>Seas ft</th><th>Temp</th>'+
+    '<th>Age</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  // the spread between stations is the thing worth seeing
+  const gs=st.filter(x=>x.g!=null).map(x=>x.g);
+  $('stationsrt').textContent=gs.length>1
+    ? 'gusts '+Math.round(Math.min(...gs))+'–'+Math.round(Math.max(...gs))+
+      ' kt across '+gs.length+' stations · alarm uses the primaries'
+    : 'monitoring only — the alarm uses the primaries';
+}
+
 /* ---------- map ---------- */
 let map,radarLayers=[],frames=[],frameIdx=0,playing=true,playTimer=null,markerLayer,arcLayer;
 let baseOSM,baseChart,chartErrs=0,baseMode='map';
@@ -1775,6 +1837,7 @@ function render(){
   drawSun();
   drawConditions();
   drawPrecip();
+  drawStations();
   $('locname').textContent=CFG.nm;
   $('updated').textContent='Updated '+hhmm(now)+' · auto-refresh 5 min';
   drawMarkers();

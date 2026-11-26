@@ -28,6 +28,15 @@ Writes come only from the Action. Anyone can read the page and the JSON.
 | Open-Meteo | hourly gust forecast, 3 days | yes |
 | NOAA CO-OPS `8443970` | water level, tide predictions, surge | yes |
 | RainViewer | animated radar tiles | yes |
+| NDBC `44098`, `44018`, `IOSN3` | monitoring only — regional wind and seas | **no** — Action only |
+| CO-OPS `8444069` Castle Island | monitoring only — waterside wind in Boston Harbor | yes |
+| `api.weather.gov/stations/KBVY` | monitoring only — Beverly, north of the harbour | yes |
+
+Monitoring stations never feed the alarm. The ladder stays on the two primary
+buoys and KBOS; the extra feeds exist so the spread can be watched. That spread
+is the point — Logan and Castle Island, 1 nm apart, routinely differ by several
+knots in the same breeze because one anemometer is at an airport and the other
+is at the water's edge. None of them is Lynn Harbour itself.
 
 Caveat worth knowing: CO-OPS station 8443970 (Boston) serves water level but
 **not** the wind product — that endpoint returns an error. Live wind comes from

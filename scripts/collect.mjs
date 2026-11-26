@@ -15,6 +15,22 @@ const BUOYS = [
 // issued on the LAND zone (MAZ007, Eastern Essex) — a surge-on-high-tide event,
 // exactly what the tide module exists to catch, appears only there.
 const ZONES = 'ANZ230,ANZ251,MAZ007';
+
+// Monitoring-only stations. These do NOT feed the alarm ladder — that stays on
+// the two primary buoys and KBOS. They are pulled so the regional picture can be
+// reviewed and compared. To keep latest.json small only their newest reading is
+// carried per run; their full samples go to the daily archive.
+const WATCH_NDBC = [
+  { id: '44098', name: 'Jeffreys Ledge',        lat: 42.798, lon: -70.168 },
+  { id: '44018', name: 'Cape Cod',              lat: 42.206, lon: -70.143 },
+  { id: 'IOSN3', name: 'Isle of Shoals',        lat: 42.967, lon: -70.623 }
+];
+const WATCH_COOPS = [
+  { id: '8444069', name: 'Castle Island (waterside)', lat: 42.3409, lon: -71.0123 }
+];
+const WATCH_NWS = [
+  { id: 'KBVY', name: 'Beverly Airport', lat: 42.584, lon: -70.916 }
+];
 const OBS_STATION = 'KBOS';
 const TIDE_STATION = '8443970';
 // latest.json stays lean because it is rewritten and committed every 10 min.
@@ -191,6 +207,84 @@ for (const [id, arr] of Object.entries(history)) {
   }
 }
 
+/* ---------- monitoring stations ---------- */
+const R_NM = 3440.065, rad = d => d * Math.PI / 180;
+function geo(lat, lon) {
+  const p1 = rad(HARBOR.lat), p2 = rad(lat), dp = p2 - p1, dl = rad(lon - HARBOR.lon);
+  const h = Math.sin(dp / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+  const dist = 2 * R_NM * Math.asin(Math.sqrt(h));
+  const y = Math.sin(dl) * Math.cos(p2);
+  const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+  const b = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+  const pts = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW',
+               'W','WNW','NW','NNW'];
+  return { dist_nm: +dist.toFixed(1), bearing_deg: Math.round(b),
+           bearing: pts[Math.round(b / 22.5) % 16] };
+}
+const stations = [];
+const watchSamples = {};
+
+// primaries first, so the panel shows everything in one list
+for (const b of BUOYS) {
+  const s = buoys[b.id];
+  if (!s) continue;
+  stations.push(Object.assign({ id: b.id, name: b.name, kind: 'buoy', primary: true,
+    at: s.wind?.at || s.observed_at, s: s.wind?.sustained_kt ?? null,
+    g: s.wind?.gust_kt ?? null, d: s.wind?.dir_deg ?? null,
+    wv: s.waves?.height_ft ?? null, water_f: s.water_temp_f,
+    pressure: s.pressure_hpa }, geo(b.lat, b.lon)));
+}
+if (obs) stations.push(Object.assign({ id: obs.station, name: obs.name || obs.station,
+  kind: 'land', primary: true, at: obs.observed_at, s: obs.sustained_kt,
+  g: obs.gust_kt, d: obs.dir_deg, temp_f: obs.temp_f }, geo(42.36, -71.01)));
+
+for (const w of WATCH_NDBC) {
+  const r = await tryGet('watch ' + w.id, async () => {
+    const txt = await j('https://www.ndbc.noaa.gov/data/realtime2/' + w.id + '.txt',
+      { text: true });
+    return summarize(txt, w);
+  });
+  if (!r) continue;
+  watchSamples[w.id] = r.samples || [];
+  stations.push(Object.assign({ id: w.id, name: w.name, kind: 'buoy', primary: false,
+    at: r.wind?.at || r.observed_at, s: r.wind?.sustained_kt ?? null,
+    g: r.wind?.gust_kt ?? null, d: r.wind?.dir_deg ?? null,
+    wv: r.waves?.height_ft ?? null, water_f: r.water_temp_f,
+    pressure: r.pressure_hpa }, geo(w.lat, w.lon)));
+}
+for (const w of WATCH_COOPS) {
+  const r = await tryGet('watch ' + w.id, async () => {
+    const d = await j('https://api.tidesandcurrents.noaa.gov/api/prod/datagetter' +
+      '?product=wind&station=' + w.id + '&date=latest&units=english' +
+      '&time_zone=lst_ldt&format=json');
+    const x = d?.data?.[0];
+    if (!x) throw new Error('no data');
+    return { t: x.t, s: +x.s, g: +x.g, d: +x.d };      // CO-OPS english wind is knots
+  });
+  if (!r) continue;
+  stations.push(Object.assign({ id: w.id, name: w.name, kind: 'land', primary: false,
+    at: r.t, s: r.s, g: r.g, d: r.d }, geo(w.lat, w.lon)));
+}
+for (const w of WATCH_NWS) {
+  const r = await tryGet('watch ' + w.id, async () => {
+    const p = (await j('https://api.weather.gov/stations/' + w.id + '/observations/latest',
+      { headers: { Accept: 'application/geo+json' } })).properties;
+    const kt = o => { if (!o || o.value == null) return null;
+      const u = o.unitCode || '';
+      return u.includes('km_h') ? +(o.value / 1.852).toFixed(1)
+           : u.includes('m_s') ? +(o.value * 1.94384).toFixed(1) : o.value; };
+    return { t: p.timestamp, s: kt(p.windSpeed), g: kt(p.windGust),
+      d: p.windDirection?.value ?? null,
+      temp_f: p.temperature?.value == null ? null
+        : +(p.temperature.value * 9 / 5 + 32).toFixed(1), text: p.textDescription };
+  });
+  if (!r) continue;
+  stations.push(Object.assign({ id: w.id, name: w.name, kind: 'land', primary: false,
+    at: r.t, s: r.s, g: r.g === null ? r.s : r.g, d: r.d, temp_f: r.temp_f,
+    text: r.text }, geo(w.lat, w.lon)));
+}
+stations.sort((a, b) => a.dist_nm - b.dist_nm);
+
 /* ---------- durable archive ----------
    Cost discipline: latest.json is rewritten and committed every 10 minutes, so
    its size is multiplied by 144 a day. Keeping 7 days of samples in it cost
@@ -239,6 +333,12 @@ const byDay = {};
 for (const [id, arr] of Object.entries(history))
   for (const s of arr) { const k = dayKey(s.t);
     ((byDay[k] ||= {})[id] ||= []).push(s); }
+// watch buoys are archived too, but never carried in latest.json
+const watchByDay = {};
+for (const [id, arr] of Object.entries(watchSamples))
+  for (const s of arr) { const k = dayKey(s.t);
+    ((watchByDay[k] ||= {})[id] ||= []).push(s); }
+for (const k of Object.keys(watchByDay)) byDay[k] ||= {};
 const flushed = [];
 for (const [k, buoySamples] of Object.entries(byDay)) {
   if (k === today) continue;                       // still accumulating
@@ -250,7 +350,12 @@ for (const [k, buoySamples] of Object.entries(byDay)) {
     const m = new Map(arr.map(s => [s.t, s]));
     asc[id] = [...m.values()].sort((a, b) => new Date(a.t) - new Date(b.t));
   }
-  const rec = { date: k, buoys: asc,
+  const wasc = {};
+  for (const [id, arr] of Object.entries(watchByDay[k] || {})) {
+    const m = new Map(arr.map(s => [s.t, s]));
+    wasc[id] = [...m.values()].sort((a, b) => new Date(a.t) - new Date(b.t));
+  }
+  const rec = { date: k, buoys: asc, watch: wasc,
     obs: carry.date === k ? carry.obs : [],
     tide: carry.date === k ? carry.tide : [],
     probes: carry.date === k ? carry.probes : [],
@@ -300,7 +405,7 @@ const out = {
   peak_all_time: allTime ? { gust_kt: allTime.max_gust_kt, date: allTime.date } : null,
   peak_7d_daily: last7 ? { gust_kt: last7.max_gust_kt, date: last7.date } : null,
   harbor: HARBOR,
-  buoys, obs, alerts, tide,
+  buoys, obs, alerts, tide, stations,
   forecast: forecast ? forecast.hours : null,
   current_model: forecast ? forecast.current : null,
   peaks_7d: peaks,
