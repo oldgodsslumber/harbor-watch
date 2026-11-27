@@ -22,9 +22,12 @@ const NORMAL = 0, YELLOW = 1, ORANGE = 2, RED = 3;
 // A forecast series at a flat speed, and one that ramps, both starting now.
 const flat = kt => Array.from({ length: 48 }, (_, i) =>
   ({ t: new Date(Date.now() + (i + 1) * 3600e3), g: kt, s: kt / 1.35, d: 60 }));
+// Ramps to `to` within 12 hours and then holds, so the 12-hour trend window the
+// headline uses actually sees the target. A ramp spread over the full 48 only
+// reaches a fraction of it inside that window.
 const ramp = (from, to) => Array.from({ length: 48 }, (_, i) =>
-  ({ t: new Date(Date.now() + (i + 1) * 3600e3), g: from + (to - from) * (i / 47),
-     s: 10, d: 60 }));
+  ({ t: new Date(Date.now() + (i + 1) * 3600e3),
+     g: i < 11 ? from + (to - from) * (i / 10) : to, s: 10, d: 60 }));
 // Products are only live while their end time is ahead of us.
 const inForce = (event, hoursLeft = 5) =>
   ({ event, ends: new Date(Date.now() + hoursLeft * 3600e3).toISOString() });
@@ -168,6 +171,86 @@ t('the same product across two zones is listed once', () => {
   const st = status(38, flat(40), [inForce('Gale Warning'), inForce('Gale Warning')]);
   const n = st.factors.filter(x => /Gale Warning/.test(x.label)).length;
   eq(n, 1, 'duplicate zone products should collapse:');
+});
+
+/* ---------- the headline must be built from the numbers, not looked up ---------- */
+// It used to be a 4x3 table of fixed phrases keyed on level and trend. That let
+// it say "Worth watching — conditions are building" while the level was actually
+// set by a tide surge, and it never said what the wind was building TOWARD, so a
+// rise that stays under the watch level read exactly like one that crosses it.
+
+t('THE BUG: the headline names the real driver when it is not the wind', () => {
+  // Light wind, a surge: the level is the surge's doing and must say so.
+  setup();
+  F.drawStatus(12, true, ramp(12, 30), [], { surge_ft: 1.2 });
+  const txt = F.stmainText();
+  ok(/water|surge/i.test(txt), 'headline blames nothing in particular: ' + txt);
+  ok(!/conditions are building\.?$/.test(txt),
+    'headline still the old stock phrase: ' + txt);
+});
+
+t('a building wind says what it is building toward, and whether it matters', () => {
+  setup();
+  // 12 -> 30 kt: real rise, but 30 is under the 35 kt watch level.
+  F.drawStatus(12, true, ramp(12, 30), [], { surge_ft: 0 });
+  const txt = F.stmainText();
+  ok(/30 kt/.test(txt), 'should quote the peak it is building to: ' + txt);
+  ok(/under the 35 kt watch/.test(txt),
+    'should say the rise stays under the watch level: ' + txt);
+});
+
+t('a building wind that DOES cross the watch level says so instead', () => {
+  setup();
+  F.drawStatus(12, true, ramp(12, 44), [], { surge_ft: 0 });
+  const txt = F.stmainText();
+  ok(/crosses the 35 kt watch/.test(txt), 'should flag the crossing: ' + txt);
+  ok(!/still under/.test(txt), 'contradictory wording: ' + txt);
+});
+
+t('the headline quotes the current gust', () => {
+  setup();
+  F.drawStatus(23, true, flat(23), [], { surge_ft: 0 });
+  ok(/23 kt/.test(F.stmainText()), F.stmainText());
+});
+
+t('an easing headline never claims a rise', () => {
+  setup();
+  F.drawStatus(42, true, flat(14), [inForce('Gale Warning')], { surge_ft: 0 });
+  const txt = F.stmainText();
+  ok(/easing/i.test(txt), txt);
+  ok(!/building|get worse|crosses/i.test(txt), 'claimed a rise while easing: ' + txt);
+});
+
+t('no wind reading is stated plainly, not dressed up as a trend', () => {
+  setup();
+  F.drawStatus(null, false, flat(20), [], { surge_ft: 0 });
+  const txt = F.stmainText();
+  ok(/No current wind reading/i.test(txt), txt);
+  ok(!/building|easing|steady/i.test(txt), 'invented a trend with no reading: ' + txt);
+});
+
+t('the lines are named as the driver when they set the level', () => {
+  setup();
+  F.drawStatus(10, true, flat(55), [], { surge_ft: 0 });
+  const txt = F.stmainText();
+  ok(/Critical/.test(txt), txt);
+  ok(/lines/i.test(txt), 'lines set the level but go unmentioned: ' + txt);
+});
+
+t('every level and trend produces one clean sentence', () => {
+  for (const g of [8, 23, 38, 55]) {
+    for (const hours of [flat(g), ramp(g, g + 25), ramp(g, 8)]) {
+      for (const al of [[], [inForce('Gale Warning')]]) {
+        setup();
+        F.drawStatus(g, true, hours, al, { surge_ft: 0.4 });
+        const txt = F.stmainText();
+        ok(!/NaN|undefined|Infinity/.test(txt), txt);
+        ok(/[.!]$/.test(txt.trim()), 'sentence does not end cleanly: ' + txt);
+        ok(txt.length < 260, 'headline too long to read at a glance: ' + txt.length);
+        ok(!/  /.test(txt), 'double space: ' + txt);
+      }
+    }
+  }
 });
 
 console.log(pass + ' passed, ' + fail.length + ' failed');

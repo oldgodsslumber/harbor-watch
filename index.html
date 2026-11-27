@@ -508,6 +508,7 @@ footer a{color:#6c8ead}
       <div class="subline" id="loadnote"></div>
     </div>
     <div class="linegrid" id="linegrid"></div>
+    <div class="subline" id="capwhy"></div>
     <div class="capbar" id="capbar"></div>
     <div class="subline" id="capnote"></div>
     <div class="linegrid" id="dosegrid"></div>
@@ -1617,8 +1618,25 @@ function drawLoad(nowGust,hours){
   $('capbar').innerHTML='<div class="capfill" style="width:'+
     (Math.min(140,pctCap)/140*100).toFixed(1)+'%;background:'+col+'"></div>'+
     mark(33,'33%')+mark(50,'50%')+mark(80,'80%')+mark(100,'BREAK')+
+    // Name the gust the number came from. "23% of breaking strength at peak"
+    // is unverifiable on its own and reads ambiguously; quoting the peak makes
+    // it checkable at a glance against the forecast beside it.
     '<div class="caplbl">'+(aPk?Math.round(aPk.pct_of_break):Math.round(pctCap))+
-    '% of breaking strength at peak</div>';
+    '% of break'+(peak?' at '+Math.round(peak.g)+' kt':'')+'</div>';
+  // Spell out the whole chain above the bar: which gust, when, what it pulls,
+  // and what the line holds. The bar alone asks to be trusted; this lets it be
+  // checked.
+  const cw=$('capwhy');
+  if(cw){
+    cw.textContent=aPk&&peak
+      ? 'Forecast peak '+Math.round(peak.g)+' kt '+
+        peak.t.toLocaleString([],{weekday:'short',hour:'numeric'})+
+        ' \u2192 '+Math.round(aPk.worst_line_lb).toLocaleString()+' lb on the '+
+        aPk.worst_line_dia+'" line, which holds '+
+        Math.round(aPk.break_derated_lb).toLocaleString()+' lb. Load rises with '+
+        'the square of wind speed, so this falls away fast as the forecast eases.'
+      : 'Waiting for a forecast peak to work from.';
+  }
   const capn=linesetCapacity(rig,{beamOn:(rig.exposure||'beam')!=='bow'});
   $('capnote').textContent=
     capn.count+' lines counted, nylon in '+(rig.condition||'unknown')+
@@ -2005,19 +2023,21 @@ function computeStatus(gust,measured,hours,alerts,tide){
   const now=new Date();
   const fut=hours.filter(h=>h.t>now);
   let lvl=0;
-  const bump=(n,label)=>{f.push({lvl:n,label:label});if(n>lvl)lvl=n;};
+  // Every factor carries its kind, so the headline can name what actually
+  // drove the level instead of guessing from the number alone.
+  const bump=(n,label,kind)=>{f.push({lvl:n,label:label,kind:kind||'other'});
+    if(n>lvl)lvl=n;};
 
   if(gust!=null){
     const t=tier(gust);
-    bump(t,Math.round(gust)+' kt '+(measured?'measured':'modelled'));
-  }else bump(1,'no wind reading');
+    bump(t,Math.round(gust)+' kt '+(measured?'measured':'modelled'),'wind');
+  }else bump(1,'no wind reading','data');
 
   const soon=fut.filter(h=>h.t-now<=3600e3);
   if(soon.length){
     const w=soon.reduce((a,b)=>b.g>a.g?b:a);
-    if(w.g>=CFG.t3)bump(2,'forecast '+Math.round(w.g)+' kt within the hour');
-    else if(w.g>=CFG.t2)bump(2,'forecast '+Math.round(w.g)+' kt within the hour');
-    else if(w.g>=CFG.t1)bump(1,'forecast '+Math.round(w.g)+' kt within the hour');
+    if(w.g>=CFG.t2)bump(2,'forecast '+Math.round(w.g)+' kt within the hour','wind');
+    else if(w.g>=CFG.t1)bump(1,'forecast '+Math.round(w.g)+' kt within the hour','wind');
   }
   // line load at the forecast peak is the thing that actually breaks something
   const peak=fut.filter(h=>h.t-now<48*3600e3)
@@ -2025,16 +2045,16 @@ function computeStatus(gust,measured,hours,alerts,tide){
   if(peak){
     const a=rigAnalysis(CFG.rig,peak.g);
     const p=a.pct_of_break;
-    if(p>=65)bump(3,'lines at '+Math.round(p)+'% of breaking strength at peak');
-    else if(p>=40)bump(2,'lines at '+Math.round(p)+'% at peak');
-    else if(p>=25)bump(1,'lines at '+Math.round(p)+'% at peak');
+    if(p>=65)bump(3,'lines at '+Math.round(p)+'% of breaking strength at peak','lines');
+    else if(p>=40)bump(2,'lines at '+Math.round(p)+'% at peak','lines');
+    else if(p>=25)bump(1,'lines at '+Math.round(p)+'% at peak','lines');
   }
   if(peak){
     const d2=cumulativeDamage(CFG.rig,fut.filter(h=>h.t-now<48*3600e3)
       .map(h=>h.g).filter(g=>g!=null));
-    if(d2.damage>=1)bump(3,'this blow exceeds one line-life');
-    else if(d2.damage>=0.5)bump(2,'blow costs '+Math.round(d2.damage*100)+'% of line life');
-    else if(d2.damage>=0.15)bump(1,'blow costs '+Math.round(d2.damage*100)+'% of line life');
+    if(d2.damage>=1)bump(3,'this blow exceeds one line-life','lines');
+    else if(d2.damage>=0.5)bump(2,'blow costs '+Math.round(d2.damage*100)+'% of line life','lines');
+    else if(d2.damage>=0.15)bump(1,'blow costs '+Math.round(d2.damage*100)+'% of line life','lines');
   }
   // NWS products are evidence, not a verdict. A Gale Warning runs to a fixed
   // end time and the Weather Service quite reasonably leaves it up until then,
@@ -2057,17 +2077,17 @@ function computeStatus(gust,measured,hours,alerts,tide){
     live.filter(a=>{const k=a.event;if(seen[k])return false;seen[k]=1;return true;})
       .forEach(a=>{
       if(WARNY.test(a.event)){
-        if(supported)bump(2,a.event);
-        else bump(1,a.event+' (wind has eased)');
+        if(supported)bump(2,a.event,'warning');
+        else bump(1,a.event+' (wind has eased)','warning');
       }else if(ADVY.test(a.event)){
-        if(supported)bump(1,a.event);
-        else f.push({lvl:0,label:a.event+' (wind has eased)'});
+        if(supported)bump(1,a.event,'warning');
+        else f.push({lvl:0,label:a.event+' (wind has eased)',kind:'warning'});
       }
     });
   }
   if(tide&&tide.surge_ft!=null){
-    if(tide.surge_ft>=2)bump(2,'surge +'+tide.surge_ft.toFixed(1)+' ft');
-    else if(tide.surge_ft>=1)bump(1,'surge +'+tide.surge_ft.toFixed(1)+' ft');
+    if(tide.surge_ft>=2)bump(2,'surge +'+tide.surge_ft.toFixed(1)+' ft','surge');
+    else if(tide.surge_ft>=1)bump(1,'surge +'+tide.surge_ft.toFixed(1)+' ft','surge');
   }
   // Is it building or easing? The headline used to assert "forecast to get
   // worse" at level 2 unconditionally, which read as a lie whenever a blow was
@@ -2090,10 +2110,64 @@ function computeStatus(gust,measured,hours,alerts,tide){
   if(blind&&!measured)blind+=', and no live station reading';
   // A stale cache with a live station is a maintenance problem; a stale cache
   // with no live reading either means the page genuinely cannot see the harbour.
-  if(blind)bump(measured?1:2,blind);
+  if(blind)bump(measured?1:2,blind,'data');
 
-  const driver=f.filter(x=>x.lvl===lvl).map(x=>x.label);
-  return {lvl:lvl,factors:f,driver:driver,trend:trend,blind:blind};
+  // What the forecast is actually heading for, in numbers, so the headline can
+  // quote it instead of gesturing at it.
+  const peak12=fut.filter(h=>(h.t-now)<=12*3600e3)
+    .reduce((a,b)=>(!a||b.g>a.g)?b:a,null);
+  const top=f.filter(x=>x.lvl===lvl);
+  const driver=top.map(x=>x.label);
+  // The kind that set the level, preferring the most concrete cause when
+  // several tie: the lines, then wind, then a warning, then surge, then data.
+  const order=['lines','wind','warning','surge','data','other'];
+  const dominant=order.find(k=>top.some(x=>x.kind===k))||'other';
+  return {lvl:lvl,factors:f,driver:driver,trend:trend,blind:blind,
+    dominant:dominant,gust:gust,peak12:peak12?{g:peak12.g,t:peak12.t}:null};
+}
+
+// The headline, composed from the numbers rather than looked up.
+//
+// It used to be a 4x3 table of fixed phrases picked by level and trend, which
+// meant it could say "conditions are building" while the level was actually
+// driven by a tide surge, and "building" covered both 8 kt -> 13 kt and
+// 11 kt -> 30 kt without distinguishing them. Worse, it never said what it was
+// building TOWARD, so a rise that stays well under the watch threshold read
+// exactly like one that crosses it.
+function statusSentence(st){
+  const k=(n)=>Math.round(n);
+  const hhmm=t=>t.toLocaleString([],{weekday:'short',hour:'numeric'});
+  const lead=['Nothing out of the ordinary at the mooring.',
+    'Worth watching.','Serious.','Critical.'][st.lvl];
+
+  // Name the actual cause when it is not the wind, so the sentence cannot
+  // imply a windy reason for a level the wind did not set.
+  const why={
+    lines:'The lines are carrying real load.',
+    wind:null,                                  // the wind clause covers it
+    warning:'A National Weather Service product is in force.',
+    surge:'The water is running above prediction.',
+    data:'The board cannot see current conditions.',
+    other:null}[st.dominant];
+
+  // The wind clause, with the numbers in it.
+  let wind=null;
+  const g=st.gust, p=st.peak12;
+  if(g==null){
+    wind='No current wind reading.';
+  }else if(p&&st.trend==='building'){
+    const crosses=p.g>=CFG.t1;
+    wind='Gusts '+k(g)+' kt now, building to about '+k(p.g)+' kt by '+hhmm(p.t)+
+      (crosses?', which crosses the '+CFG.t1+' kt watch level.'
+              :' \u2014 still under the '+CFG.t1+' kt watch level.');
+  }else if(st.trend==='easing'){
+    wind='Gusts '+k(g)+' kt and easing'+(p?', nothing above '+k(p.g)+
+      ' kt in the next 12 hours.':'.');
+  }else{
+    wind='Gusts '+k(g)+' kt, steady'+(p&&p.g>g+1?', peaking near '+k(p.g)+
+      ' kt.':'.');
+  }
+  return [lead,why,wind].filter(Boolean).join(' ');
 }
 function drawStatus(gust,measured,hours,alerts,tide){
   const st=computeStatus(gust,measured,hours,alerts,tide);
@@ -2102,22 +2176,7 @@ function drawStatus(gust,measured,hours,alerts,tide){
   bar.style.color=cssv(TVAR[st.lvl]);
   $('stword').textContent=LEVEL[st.lvl];
   $('stword').style.color=cssv(TVAR[st.lvl]);
-  // Each level reads differently depending on which way things are going, so
-  // the sentence is never claiming a trend nobody checked.
-  const MAIN=[
-    {building:'Quiet at the mooring, though the wind is picking up.',
-     easing:'Nothing out of the ordinary at the mooring.',
-     flat:'Nothing out of the ordinary at the mooring.'},
-    {building:'Worth watching \u2014 conditions are building.',
-     easing:'Easing off, but still worth a look.',
-     flat:'Worth watching \u2014 conditions are unsettled.'},
-    {building:'Serious. Lines are working and it is forecast to get worse.',
-     easing:'Lines are still working, but the worst has passed.',
-     flat:'Serious. The lines are working and conditions are holding.'},
-    {building:'Critical, and still building. Loads are at what the lines can take.',
-     easing:'Critical, though past the peak. Loads are near what the lines can take.',
-     flat:'Critical. Loads are at or near what the lines can take.'}];
-  $('stmain').textContent=MAIN[st.lvl][st.trend||'flat'];
+  $('stmain').textContent=statusSentence(st);
   $('stwhy').textContent=st.driver.length?'Driven by: '+st.driver.join(' · '):'';
   // Say it outright rather than leaving it to a dimmed feed dot in the corner.
   const sb2=$('stblind');

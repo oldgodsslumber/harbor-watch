@@ -234,6 +234,37 @@ t('line load: no forecast',()=>{reset();F.drawLoad(26,[]);scan('lines-nofc');});
 
 
 // The status roll-up has its own suite: test/status.test.mjs
+
+// The load bar quotes a bare percentage, so it has to name the gust it came
+// from or there is no way to check it. 23% of break looked wrong to the owner
+// precisely because nothing on the bar said it was computed at a 31 kt peak.
+t('load bar names the gust its percentage came from',()=>{reset();
+  F.drawLoad(12,H);
+  const lbl=(byId['capbar'].innerHTML.match(/caplbl">([^<]+)/)||[])[1]||'';
+  if(!/% of break/.test(lbl))throw new Error('no percentage: '+lbl);
+  if(!/at \d+ kt/.test(lbl))throw new Error('percentage not attributed to a gust: '+lbl);
+  const why=byId['capwhy'].textContent||'';
+  if(!/lb on the/.test(why))throw new Error('no load chain: '+why);
+  if(!/holds/.test(why))throw new Error('does not say what the line holds: '+why);
+  if(/NaN|undefined/.test(lbl+why))throw new Error('garbage: '+lbl+' / '+why);});
+
+t('load bar percentage agrees with the peak it quotes',()=>{reset();
+  F.drawLoad(12,H);
+  const lbl=(byId['capbar'].innerHTML.match(/caplbl">([^<]+)/)||[])[1]||'';
+  const m=lbl.match(/(\d+)% of break at (\d+) kt/);
+  if(!m)throw new Error('unparseable label: '+lbl);
+  const pct=+m[1], kt=+m[2];
+  // Recompute independently from the quoted gust.
+  const expect=F.rigAnalysisPct?F.rigAnalysisPct(kt):null;
+  const peak=Math.max(...H.filter(h=>h.t>new Date()).map(h=>h.g));
+  if(Math.abs(kt-Math.round(peak))>1)
+    throw new Error('quoted gust '+kt+' is not the forecast peak '+peak);
+  if(pct<1||pct>140)throw new Error('implausible percentage: '+pct);});
+
+t('load bar with no forecast says so instead of showing a number',()=>{reset();
+  F.drawLoad(12,[]);
+  const why=byId['capwhy'].textContent||'';
+  if(!/Waiting/.test(why))throw new Error('should admit it has no peak: '+why);});
 t('inbox: empty state',()=>{reset();F.drawInbox([]);
   if(!/No active warnings/.test(byId['inbox'].innerHTML))throw new Error('no empty state');});
 t('inbox: sorts worst first and escapes markup',()=>{reset();

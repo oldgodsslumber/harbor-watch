@@ -60,7 +60,7 @@ const ci=m[1].indexOf(CUT);
 if(ci<0) throw new Error('part 2 banner not found — update CUT in this test');
 const src=m[1].slice(0,ci)
   .replace(/^'use strict';/,'')
-  + '\nglobalThis.__fns={CFG,drawStatus,drawInbox,computeStatus,fillWindGaps,liveAlertsOnly,alertWindowHours,snapAgeMin,alarmLevel,currentTiers,applyAutoThresholds,setSNAP:v=>{SNAP=v;},setHOURS:v=>{HOURS=v;},getSNAP:()=>SNAP,drawStations,drawConditions,drawPrecip,wmoLabel,wmoKind,drawSun,drawGauge,drawCompass,drawTideLevel,drawTideCurve,arcD,polar,tier,drawLeadTime,episodes,drawPressure,drawLoad,drawWater,sunTimes,isDaylight};';
+  + '\nglobalThis.__fns={CFG,drawStatus,drawInbox,computeStatus,statusSentence,fillWindGaps,liveAlertsOnly,alertWindowHours,snapAgeMin,alarmLevel,currentTiers,applyAutoThresholds,setSNAP:v=>{SNAP=v;},setHOURS:v=>{HOURS=v;},getSNAP:()=>SNAP,drawStations,drawConditions,drawPrecip,wmoLabel,wmoKind,drawSun,drawGauge,drawCompass,drawTideLevel,drawTideCurve,arcD,polar,tier,drawLeadTime,episodes,drawPressure,drawLoad,drawWater,sunTimes,isDaylight};';
 new Function(src)();
 const F=globalThis.__fns;
 

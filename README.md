@@ -98,10 +98,19 @@ is `/alerts/active` and normally self-cleans, but the cached snapshot holds
 whatever was in force when it was written — so when the collector stalls, expired
 products linger. Filtering happens at both consumption points now.
 
-**The headline does not assert a trend it has not checked.** The level-2 sentence
-read "it is forecast to get worse" unconditionally, which is precisely wrong on
-the back side of a blow. Each level now has building / easing / flat wording and
-the trend is computed from the next twelve hours.
+**The headline is composed from the numbers, not looked up.** It was a 4x3 table
+of fixed phrases keyed on level and trend — which is how it came to say "Worth
+watching, conditions are building" while the level was actually set by a tide
+surge, and how a rise to 30 kt read identically to one that crosses the 35 kt
+watch level. The sentence now names the factor that set the level when that is
+not the wind, quotes the current gust and the twelve-hour peak, and says whether
+that peak crosses the watch threshold or stays under it. "No current wind
+reading" is stated plainly rather than dressed up as a trend.
+
+Same principle on the load bar. A bare "23% of breaking strength at peak" is
+unverifiable and reads ambiguously, so the bar now says "23% of break at 31 kt"
+and the line above it gives the whole chain: the peak gust and when, the pounds
+that puts on the governing line, and what that line holds.
 
 **Not knowing is not all-clear, and not weather either.** A stale snapshot rides
 alongside the weather level as `blind` and is stated in words on the card. Stale
@@ -224,9 +233,9 @@ Site-level defaults (buoy list, zones, history length) are at the top of
     node test/archive.test.mjs   #  9 — day flushing, rollup, no-rewrite guarantee
     node test/rig.test.mjs       # 17 — mooring load model, validated against ABYC
     node test/alarm.test.mjs     #  9 — the alarm tracks the live thresholds
-    node test/status.test.mjs    # 20 — the condition roll-up, incl. warning decay
+    node test/status.test.mjs    # 28 — the condition roll-up and the headline
     node test/wind.test.mjs      # 13 — the source ladder's gap filling
-    node test/geometry.test.mjs  # 62 — SVG geometry, run against the shipped index.html
+    node test/geometry.test.mjs  # 65 — SVG geometry, run against the shipped index.html
 
 `test/harness.mjs` is shared by the last two: a DOM shim plus a loader that pulls
 the drawing half out of the built `index.html`, so neither suite can pass against
