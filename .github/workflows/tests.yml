@@ -29,4 +29,5 @@ jobs:
           node test/rig.test.mjs
           node test/alarm.test.mjs
           node test/status.test.mjs
+          node test/wind.test.mjs
           node test/geometry.test.mjs

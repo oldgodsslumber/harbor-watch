@@ -1961,6 +1961,45 @@ function snapAgeMin(){
 }
 const STALE_MIN=45;
 
+// Fill missing fields on a wind reading from the next source that has them.
+// Taking a source whole used to leave holes: KBOS intermittently reports a gust
+// with a null direction and null sustained, which blanked the compass while a
+// gust showed. A missing GUST is the worse case, because the alarm, the
+// thresholds and the condition roll-up all key off it — a null gust made the
+// page blind to the wind while still showing the station as healthy, reporting
+// "no wind reading" with a 6 kt sustained in hand and an 11.7 kt buoy gust
+// nearby.
+//
+// donors are [label, direction, sustained, gust], measurements first.
+// Returns the same object, annotated with what it had to borrow and from where,
+// because a reading stitched from two stations should say so.
+function fillWindGaps(picked,donors){
+  if(!picked)return picked;
+  const ds=donors||[];
+  const note=t=>{picked.borrowed=(picked.borrowed||[]).concat(t);};
+  if(picked.d==null){
+    const dn=ds.find(x=>x[1]!=null);
+    if(dn){picked.d=dn[1];note('direction from '+dn[0]);}
+  }
+  if(picked.s==null||picked.s===0){
+    const sn=ds.find(x=>x[2]!=null&&x[2]>0);
+    if(sn){picked.s=sn[2];note('sustained from '+sn[0]);}
+  }
+  if(picked.g==null){
+    const gn=ds.find(x=>x[3]!=null&&x[3]>0);
+    if(gn){picked.g=gn[3];note('gust from '+gn[0]);}
+    else if(picked.s!=null&&picked.s>=0){
+      // METAR omits the gust group when the gust does not exceed the sustained
+      // by about 10 kt. A station reporting sustained and no gust is telling us
+      // the wind is steady, not that it does not know.
+      picked.g=picked.s;note('no gust reported, using sustained');
+    }
+  }
+  // Never let a borrow read as a clean single-source measurement.
+  if(picked.borrowed&&picked.src)picked.src+=' · '+picked.borrowed.join(', ');
+  return picked;
+}
+
 function computeStatus(gust,measured,hours,alerts,tide){
   const f=[];                      // {lvl, label, hot}
   const now=new Date();
@@ -2574,28 +2613,22 @@ async function refresh(){
     picked={s:bw.wind.sustained_kt,g:bw.wind.gust_kt,d:bw.wind.dir_deg,m:true,
       src:'NDBC '+bw.id+' · stale, '+ago(bw.wind.at)};
 
-  // KBOS intermittently reports a gust with a null direction and null sustained.
-  // Taking a source whole then meant the compass went blank while a gust showed.
-  // Borrow any missing field from the next source that has it, and say so.
+  // Fill any missing field from the next source that has it. Pure and tested:
+  // see fillWindGaps() in part 1 and test/wind.test.mjs.
   if(picked){
     const donors=[];
-    if(bw&&bw.wind) donors.push(['NDBC '+bw.id,bw.wind.dir_deg,bw.wind.sustained_kt]);
+    if(bw&&bw.wind) donors.push(['NDBC '+bw.id,bw.wind.dir_deg,bw.wind.sustained_kt,
+      bw.wind.gust_kt]);
     if(snap&&snap.stations) for(const st of snap.stations)
-      donors.push([st.id,st.d,st.s]);
-    if(snap&&snap.obs) donors.push([snap.obs.station,snap.obs.dir_deg,snap.obs.sustained_kt]);
-    if(cur) donors.push(['model',cur.wind_direction_10m,cur.wind_speed_10m]);
+      donors.push([st.id,st.d,st.s,st.g]);
+    if(snap&&snap.obs) donors.push([snap.obs.station,snap.obs.dir_deg,
+      snap.obs.sustained_kt,snap.obs.gust_kt]);
+    if(cur) donors.push(['model',cur.wind_direction_10m,cur.wind_speed_10m,
+      cur.wind_gusts_10m]);
     const nowH=HOURS.length?HOURS.reduce((a,b)=>
       Math.abs(b.t-Date.now())<Math.abs(a.t-Date.now())?b:a):null;
-    if(nowH) donors.push(['forecast',nowH.d,nowH.s]);
-    if(picked.d==null){
-      const dn=donors.find(x=>x[1]!=null);
-      if(dn){picked.d=dn[1];picked.borrowed=(picked.borrowed||[]).concat('direction from '+dn[0]);}
-    }
-    if(picked.s==null||picked.s===0){
-      const sn=donors.find(x=>x[2]!=null&&x[2]>0);
-      if(sn){picked.s=sn[2];picked.borrowed=(picked.borrowed||[]).concat('sustained from '+sn[0]);}
-    }
-    if(picked.borrowed)picked.src+=' · '+picked.borrowed.join(', ');
+    if(nowH) donors.push(['forecast',nowH.d,nowH.s,nowH.g]);
+    picked=fillWindGaps(picked,donors);
   }
   CURRENT=picked;
   if(!picked){

@@ -109,6 +109,27 @@ cache with a live station reading is YELLOW — a maintenance problem. Stale cac
 *and* no live reading is ORANGE: the page genuinely cannot see the harbour, which
 is worth being loud about.
 
+### The source ladder
+
+The current wind is assembled rather than read: freshest buoy inside 45 minutes,
+then the live station, then the cached station, then the model, then the nearest
+forecast hour, then a stale buoy. Sources arrive with holes — KBOS intermittently
+reports a gust with a null direction and null sustained — so `fillWindGaps()`
+takes each missing field from the next source that has it and annotates the
+reading with what it borrowed and from where. A stitched reading never displays
+as a clean single-source measurement.
+
+A missing **gust** is the one that matters, because the alarm, the thresholds and
+the condition roll-up all key off it. It was also the one field the ladder never
+filled: on 2026-11-27 KBOS reported a 6 kt sustained with a null gust, buoy 44013
+had an 11.7 kt gust an hour old, and the board reported "no wind reading" — blind
+to the wind while showing the station as healthy. A real gust from another source
+is preferred; failing that, the sustained wind is used, because METAR omits the
+gust group when the gust does not exceed the sustained by about 10 kt, so a
+station reporting sustained and no gust is saying the wind is steady rather than
+saying it does not know. Genuine absence still reads as absence, which the status
+roll-up treats as not-calm rather than as all-clear.
+
 ### The alarm
 
 The alarm stores a **tier**, not a speed. `alarmTier` is one of `watch`,
@@ -204,6 +225,7 @@ Site-level defaults (buoy list, zones, history length) are at the top of
     node test/rig.test.mjs       # 17 — mooring load model, validated against ABYC
     node test/alarm.test.mjs     #  9 — the alarm tracks the live thresholds
     node test/status.test.mjs    # 20 — the condition roll-up, incl. warning decay
+    node test/wind.test.mjs      # 13 — the source ladder's gap filling
     node test/geometry.test.mjs  # 62 — SVG geometry, run against the shipped index.html
 
 `test/harness.mjs` is shared by the last two: a DOM shim plus a loader that pulls
