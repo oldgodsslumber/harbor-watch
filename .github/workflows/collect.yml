@@ -30,14 +30,17 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Run tests
+      # ONLY the tests that guard the data this job writes. A UI or geometry
+      # failure must never be able to stop weather collection: this workflow
+      # feeds a safety dashboard, and on 2026-11-26 a cosmetic test in this
+      # list took the feed down for fourteen hours — the collector fetched
+      # fine each run, then exited non-zero before the commit step and threw
+      # the data away. The full suite runs in tests.yml instead.
+      - name: Data tests
         run: |
           node test/parser.test.mjs
           node test/sun.test.mjs
           node test/archive.test.mjs
-          node test/rig.test.mjs
-          node test/alarm.test.mjs
-          node test/geometry.test.mjs
 
       - name: Collect
         run: node scripts/collect.mjs

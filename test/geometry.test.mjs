@@ -1,64 +1,5 @@
-import { readFileSync } from 'node:fs';
-// ---- minimal DOM shim ----
-const made=[];
-class N{
-  constructor(tag){this.tag=tag;this.attrs={};this.kids=[];this._t=null;made.push(this);}
-  setAttribute(k,v){this.attrs[k]=String(v);}
-  removeAttribute(k){delete this.attrs[k];}
-  getAttribute(k){return this.attrs[k];}
-  appendChild(c){this.kids.push(c);return c;}
-  set textContent(v){this._t=v;if(v==='')this.kids=[];}
-  get textContent(){return this._t;}
-  set innerHTML(v){this._h=v;} get innerHTML(){return this._h||'';}
-  addEventListener(){} getBoundingClientRect(){return {width:680,height:230,top:0,left:0};}
-  querySelectorAll(){return [];} get style(){return this._s||(this._s={});}
-  get classList(){return {add(){},remove(){},toggle(){}};}
-}
-const byId={};
-const ids=['lthero','ltrows','ltstrip','alarmrt','lthint','daylight','ltscale','stations','stationsrt','statusbar','stword','stmain','stwhy',
- 'stfactors','inbox','inboxrt','standby',
- 'baro','barova','barotd','barort','sunarc','sunrt','condglyph','condtemp','condtext',
- 'condfeels','condgrid','condsrc','precipbars','preciptotal','precipnote','loadx','loadbar','loadnow','loadpk','loadpkt',
- 'loadnote','wtemp','wnote','loadrt','linegrid','capbar','capnote','rigwarn','righint',
- 'rdia','rcon','rcond','rwh','rloa','rexp','rauto','tlnight','expribbon',
- 'gauge','compass','tidelevel','tidecurve','tidedir','wl','wls','chip','chiptx',
- 'nowsrc','expnow','feeds','tip','locname','updated','lead1','lead2','lead3','lead4',
- 'tl','tlx','buoys','alertbox','alertev','alertwhen','alertdesc','flash','ack','panel',
- 'gearbtn','save','testsound','playbtn','frame','framets','recenter','radarts','map',
- 'mapfallback','t1','t2','t3','talarm','arc1','arc2','lat','lon','nm','stn','tideloc'];
-ids.forEach(i=>byId[i]=new N('div'));
-globalThis.document={
-  createElementNS:(ns,tag)=>new N(tag),
-  createElement:tag=>new N(tag),
-  getElementById:i=>byId[i]||(byId[i]=new N('div')),
-  querySelector:()=>new N('div'), addEventListener(){}, documentElement:new N('html'),
-  set title(v){}, get title(){return '';}
-};
-globalThis.window={addEventListener(){},innerWidth:1200,AudioContext:null};
-globalThis.localStorage={getItem:()=>null,setItem(){}};
-globalThis.getComputedStyle=()=>({getPropertyValue:n=>({
-  '--calm':'#4da3ff','--watch':'#ffe066','--concern':'#fb923c','--crit':'#ef4444',
-  '--sea':'#2f7fd4','--sea2':'#1e5fa8'}[n]||'#4da3ff')});
-globalThis.setInterval=()=>0; globalThis.clearInterval=()=>{}; globalThis.setTimeout=()=>0;
-globalThis.clearTimeout=()=>{}; globalThis.fetch=async()=>({ok:false,status:500});
-globalThis.L=undefined;
+import { F, made, byId, freshSnap, resetDom } from './harness.mjs';
 
-// Read the SHIPPED page, not scratch files: this suite must fail if index.html
-// and the sources ever disagree. The page carries one inline <script> holding
-// sun + rig + part 1 (drawing) + part 2 (data/map); part 2 needs a live DOM and
-// a network, so it is cut off at its own banner and only part 1 is exercised.
-const PAGE=new URL('../index.html',import.meta.url);
-const html=readFileSync(PAGE,'utf8');
-const m=html.match(/<script>\n([\s\S]*?)\n<\/script>/);
-if(!m) throw new Error('could not find the inline script in index.html');
-const CUT='/* ---------- map ---------- */';
-const ci=m[1].indexOf(CUT);
-if(ci<0) throw new Error('part 2 banner not found — update CUT in this test');
-const src=m[1].slice(0,ci)
-  .replace(/^'use strict';/,'')
-  + '\nglobalThis.__fns={CFG,drawStatus,drawInbox,computeStatus,alarmLevel,currentTiers,applyAutoThresholds,setSNAP:v=>{SNAP=v;},setHOURS:v=>{HOURS=v;},getSNAP:()=>SNAP,drawStations,drawConditions,drawPrecip,wmoLabel,wmoKind,drawSun,drawGauge,drawCompass,drawTideLevel,drawTideCurve,arcD,polar,tier,drawLeadTime,episodes,drawPressure,drawLoad,drawWater,sunTimes,isDaylight};';
-new Function(src)();
-const F=globalThis.__fns;
 
 // ---- real data ----
 const series=[];
@@ -123,14 +64,31 @@ t('tier boundaries track the configured thresholds',()=>{
   if(F.tier(C.t3)!==3||F.tier(C.t3-0.01)!==2)throw new Error('critical edge at '+C.t3);});
 
 
-// ---- lead-time widget, against the real collector forecast ----
-import {readFileSync as rf} from 'node:fs';
-let real=null;
-try{real=JSON.parse(rf('/tmp/latest.json','utf8'));}catch(e){}
-const H=(real&&real.forecast?real.forecast:[]).map(h=>({t:new Date(h.t),s:h.s,g:h.g,d:h.d}));
+// ---- lead-time widget, against a synthetic 72 h forecast ----
+// Deterministic on purpose. This used to read /tmp/latest.json, which existed
+// only in the authoring container: in CI the file was absent, the series came
+// back empty and two tests failed — which is how a geometry suite managed to
+// take down data collection. A geometry test whose result depends on today's
+// weather is not a test, so the series is generated here and the shape of it is
+// fixed: a build to a 46 kt peak, then an ease back down.
+const H=(()=>{
+  const out=[];
+  const t0=Date.now()-3600e3;
+  for(let i=0;i<72;i++){
+    // single smooth hump peaking around hour 14, floor ~12 kt, peak ~58 kt
+    const g=12+46*Math.exp(-Math.pow((i-14)/7,2));
+    out.push({t:new Date(t0+i*3600e3),s:+(g/1.35).toFixed(1),
+      g:+g.toFixed(1),d:(40+i*3)%360});
+  }
+  return out;
+})();
 
-t('lead: real 72h forecast',()=>{reset();
-  if(!H.length)throw new Error('no real forecast loaded');
+t('lead: synthetic 72h forecast spans the full ladder',()=>{reset();
+  if(H.length!==72)throw new Error('expected 72 hours, got '+H.length);
+  const mx=Math.max(...H.map(h=>h.g)), mn=Math.min(...H.map(h=>h.g));
+  // The fixture has to straddle the thresholds or the tests below prove nothing.
+  if(mx<F.CFG.t3)throw new Error('fixture never reaches critical ('+mx+')');
+  if(mn>=F.CFG.t1)throw new Error('fixture never drops below watch ('+mn+')');
   F.drawLeadTime(H,26);scan('lt-real');});
 t('lead: live gust already over critical',()=>{reset();F.drawLeadTime(H,55);scan('lt-over');});
 t('lead: live gust null',()=>{reset();F.drawLeadTime(H,null);scan('lt-null');});
@@ -275,33 +233,7 @@ t('line load: zero and null gust',()=>{reset();F.drawLoad(0,H);F.drawLoad(null,H
 t('line load: no forecast',()=>{reset();F.drawLoad(26,[]);scan('lines-nofc');});
 
 
-t('status: calm',()=>{reset();
-  const st=F.computeStatus(8,true,H.map(h=>({...h,g:8})),[],{surge_ft:0});
-  if(st.lvl!==0)throw new Error('expected NORMAL, got '+st.lvl);});
-t('status: a warning alone lifts it to ORANGE',()=>{reset();
-  const st=F.computeStatus(8,true,H.map(h=>({...h,g:8})),
-    [{event:'Gale Warning'}],{surge_ft:0});
-  if(st.lvl!==2)throw new Error('got '+st.lvl);});
-t('status: an advisory alone is YELLOW',()=>{reset();
-  const st=F.computeStatus(8,true,H.map(h=>({...h,g:8})),
-    [{event:'Small Craft Advisory'}],{surge_ft:0});
-  if(st.lvl!==1)throw new Error('got '+st.lvl);});
-t('status: line load at peak can drive RED on its own',()=>{reset();
-  const st=F.computeStatus(10,true,H.map(h=>({...h,g:55})),[],{surge_ft:0});
-  if(st.lvl!==3)throw new Error('got '+st.lvl);
-  if(!st.driver.join(' ').match(/breaking strength/))
-    throw new Error('driver should name the lines: '+st.driver);});
-t('status: surge contributes',()=>{reset();
-  const st=F.computeStatus(8,true,H.map(h=>({...h,g:8})),[],{surge_ft:2.4});
-  if(st.lvl!==2)throw new Error('got '+st.lvl);});
-t('status: no reading is not treated as calm',()=>{reset();
-  const st=F.computeStatus(null,false,[],[],null);
-  if(st.lvl<1)throw new Error('absent data should not read as NORMAL');});
-t('status: renders without NaN at every level',()=>{
-  [[8,[]],[26,[{event:'Small Craft Advisory'}]],[33,[{event:'Gale Warning'}]],
-   [55,[{event:'Storm Warning'}]]].forEach(([g,al])=>{
-    reset();F.drawStatus(g,true,H.map(h=>({...h,g:g})),al,{surge_ft:0.4});
-    scan('status-'+g);});});
+// The status roll-up has its own suite: test/status.test.mjs
 t('inbox: empty state',()=>{reset();F.drawInbox([]);
   if(!/No active warnings/.test(byId['inbox'].innerHTML))throw new Error('no empty state');});
 t('inbox: sorts worst first and escapes markup',()=>{reset();

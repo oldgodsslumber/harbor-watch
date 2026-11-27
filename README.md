@@ -76,6 +76,39 @@ is a log-linear fit anchored at those two published points, and `cumulativeDamag
 applies Miner's rule across the forecast, so the page can say what a whole blow
 costs rather than only how hard the worst gust pulls.
 
+### The condition roll-up
+
+The top-line NORMAL / YELLOW / ORANGE / RED is the worst of: measured wind tier,
+imminent forecast, line load at the forecast peak, cumulative line-life cost,
+NWS products in force, storm surge, and data staleness. Three rules in it are
+there because of a specific failure on 2026-11-27, when the board still read
+ORANGE hours after the blow had gone through.
+
+**An NWS product is evidence, not a verdict.** A Gale Warning runs to a fixed end
+time and the Weather Service reasonably leaves it up until then, so after the
+wind eases the warning is describing the past. A warning now raises the level to
+ORANGE only while the wind it warns of is actually in evidence — measured now, or
+forecast *inside the warning's own remaining window*. Otherwise it contributes
+YELLOW and is labelled "wind has eased". It stays on the board either way,
+because it is real and still in force.
+
+**Expired products count for nothing.** Nothing filtered on end time, so a Wind
+Advisory that ended at 07:00 was still being counted at 08:00. The live endpoint
+is `/alerts/active` and normally self-cleans, but the cached snapshot holds
+whatever was in force when it was written — so when the collector stalls, expired
+products linger. Filtering happens at both consumption points now.
+
+**The headline does not assert a trend it has not checked.** The level-2 sentence
+read "it is forecast to get worse" unconditionally, which is precisely wrong on
+the back side of a blow. Each level now has building / easing / flat wording and
+the trend is computed from the next twelve hours.
+
+**Not knowing is not all-clear, and not weather either.** A stale snapshot rides
+alongside the weather level as `blind` and is stated in words on the card. Stale
+cache with a live station reading is YELLOW — a maintenance problem. Stale cache
+*and* no live reading is ORANGE: the page genuinely cannot see the harbour, which
+is worth being loud about.
+
 ### The alarm
 
 The alarm stores a **tier**, not a speed. `alarmTier` is one of `watch`,
@@ -169,8 +202,18 @@ Site-level defaults (buoy list, zones, history length) are at the top of
     node test/sun.test.mjs       #  7 — sun times vs NWS published values
     node test/archive.test.mjs   #  9 — day flushing, rollup, no-rewrite guarantee
     node test/rig.test.mjs       # 17 — mooring load model, validated against ABYC
-    node test/alarm.test.mjs     # 9  — the alarm tracks the live thresholds
-    node test/geometry.test.mjs  # 69 — SVG geometry, run against the shipped index.html
+    node test/alarm.test.mjs     #  9 — the alarm tracks the live thresholds
+    node test/status.test.mjs    # 20 — the condition roll-up, incl. warning decay
+    node test/geometry.test.mjs  # 62 — SVG geometry, run against the shipped index.html
+
+`test/harness.mjs` is shared by the last two: a DOM shim plus a loader that pulls
+the drawing half out of the built `index.html`, so neither suite can pass against
+sources that were never shipped.
+
+Two workflows, deliberately. `collect.yml` runs every 10 minutes and gates only
+on the three suites that guard the data it writes. `tests.yml` runs everything on
+push. They are separate because they were once combined, and a UI test failure
+stopped weather collection for fourteen hours — see below.
 
 The parser assertion that matters: `WVHT` is `MM` on most rows, so it scans down
 per-field for the most recent real value instead of trusting the newest row.

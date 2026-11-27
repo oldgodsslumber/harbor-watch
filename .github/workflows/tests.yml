@@ -1,0 +1,32 @@
+name: Tests
+
+# The full suite, including the UI/geometry tests that run against the built
+# index.html. Deliberately separate from collect.yml: a failure here should
+# tell us the page is wrong, not stop the weather data from being collected.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: All tests
+        run: |
+          node test/parser.test.mjs
+          node test/sun.test.mjs
+          node test/archive.test.mjs
+          node test/rig.test.mjs
+          node test/alarm.test.mjs
+          node test/status.test.mjs
+          node test/geometry.test.mjs
